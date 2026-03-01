@@ -1,105 +1,171 @@
-/* ===== ДИЗАЙН В СТИЛЕ ЯКЛАСС ===== */
+/* ===== МЕГА ГЛАССМОРФИЗМ ===== */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+    font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* Светлая тема (по умолчанию) */
+/* Светлая тема */
 body.light-theme {
-    background: linear-gradient(145deg, #1a3b2e 0%, #2a5a45 100%);
-    color: #333;
+    background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
+    color: #1a1a2e;
+    position: relative;
 }
 
 /* Темная тема */
 body.dark-theme {
-    background: linear-gradient(145deg, #0a1a1a 0%, #1a2f2a 100%);
-    color: #e0e0e0;
+    background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+    color: #fff;
+}
+
+/* Анимированный фон */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 20% 50%, rgba(255,255,255,0.05) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(255,255,255,0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ===== ГЛАССМОРФИЗМ ЭФФЕКТЫ ===== */
+.glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 30px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 15px 45px 0 rgba(31, 38, 135, 0.5);
+    transform: translateY(-5px);
+}
+
+body.dark-theme .glass-card {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* ===== ШАПКА ===== */
 .header {
-    background: white;
-    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 12px 25px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 15px;
     position: sticky;
     top: 0;
-    z-index: 100;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
 }
 
 body.dark-theme .header {
-    background: #1a2a2a;
-    border-bottom: 2px solid #4CAF50;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Левая часть шапки */
+/* Левая часть */
 .header-left {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 30px;
     flex-wrap: wrap;
 }
 
 .logo {
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 900;
     cursor: pointer;
-    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+body.dark-theme .logo {
+    background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .logo-il {
-    color: #4CAF50;
+    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 15px rgba(255,215,0,0.5));
 }
 
 .logo-yaclass {
-    color: #2196F3;
+    background: linear-gradient(135deg, #00ffff, #0088ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 15px rgba(0,255,255,0.5));
 }
 
 /* Навигация */
 .nav-menu {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
 }
 
 .nav-link {
-    color: #333;
+    padding: 8px 20px;
+    border-radius: 40px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
     text-decoration: none;
-    padding: 8px 16px;
-    border-radius: 30px;
-    background: #f0f0f0;
-    transition: all 0.3s;
     font-weight: 600;
     font-size: 14px;
-    white-space: nowrap;
+    transition: all 0.3s;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .nav-link:hover {
-    background: #4CAF50;
-    color: white;
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 
 .nav-link.active {
-    background: #4CAF50;
-    color: white;
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 215, 0, 0.5);
+    box-shadow: 0 5px 20px rgba(255,215,0,0.3);
 }
 
-body.dark-theme .nav-link {
-    background: #2a3a3a;
-    color: #e0e0e0;
-}
-
-/* Правая часть шапки */
+/* Правая часть */
 .header-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 15px;
     flex-wrap: wrap;
 }
 
@@ -107,22 +173,26 @@ body.dark-theme .nav-link {
 .user-card {
     display: flex;
     align-items: center;
-    gap: 10px;
-    background: #f0f0f0;
-    padding: 4px 12px 4px 4px;
-    border-radius: 40px;
-    border: 2px solid #4CAF50;
+    gap: 15px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    padding: 6px 20px 6px 6px;
+    border-radius: 50px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s;
 }
 
-body.dark-theme .user-card {
-    background: #2a3a3a;
+.user-card:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 215, 0, 0.3);
 }
 
 .avatar {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
-    border: 2px solid #4CAF50;
+    border: 2px solid rgba(255, 215, 0, 0.5);
+    box-shadow: 0 0 20px rgba(255,215,0,0.3);
 }
 
 .user-info {
@@ -131,59 +201,48 @@ body.dark-theme .user-card {
 }
 
 .user-name {
-    font-weight: 600;
-    font-size: 13px;
-    line-height: 1.2;
+    font-weight: 700;
+    font-size: 14px;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .user-role {
     font-size: 11px;
-    color: #4CAF50;
+    color: #ffd700;
     font-weight: 600;
+    letter-spacing: 0.5px;
 }
 
 /* Кнопки */
 .login-btn, .logout-btn, .theme-btn {
-    padding: 8px 16px;
-    border-radius: 30px;
+    padding: 8px 20px;
+    border-radius: 40px;
     font-weight: 600;
     font-size: 13px;
     cursor: pointer;
     transition: all 0.3s;
-    white-space: nowrap;
-}
-
-.login-btn, .logout-btn {
-    background: #4CAF50;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
     color: white;
-    border: none;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.theme-btn {
-    background: transparent;
-    border: 2px solid #4CAF50;
-    color: #4CAF50;
-}
-
-.login-btn:hover, .logout-btn:hover {
-    background: #45a049;
-}
-
-.theme-btn:hover {
-    background: #4CAF50;
-    color: white;
-}
-
-body.dark-theme .theme-btn {
-    color: #ffd700;
-    border-color: #ffd700;
+.login-btn:hover, .logout-btn:hover, .theme-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 215, 0, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(255,215,0,0.2);
 }
 
 /* ===== ОСНОВНОЙ КОНТЕЙНЕР ===== */
 .main-container {
     max-width: 1400px;
-    margin: 20px auto;
-    padding: 0 15px;
+    margin: 25px auto;
+    padding: 0 20px;
+    position: relative;
+    z-index: 1;
 }
 
 /* ===== КНОПКА ВХОДА ===== */
@@ -191,44 +250,49 @@ body.dark-theme .theme-btn {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 70vh;
+    min-height: 80vh;
 }
 
 .login-card {
-    background: white;
-    border-radius: 30px;
-    padding: 40px 30px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50px;
+    padding: 60px 50px;
     text-align: center;
-    max-width: 400px;
+    max-width: 500px;
     width: 100%;
-    border: 3px solid #4CAF50;
-}
-
-body.dark-theme .login-card {
-    background: #1a2a2a;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
 }
 
 .login-title {
-    font-size: 40px;
-    margin-bottom: 15px;
+    font-size: 48px;
+    margin-bottom: 20px;
 }
 
 .login-subtitle {
-    color: #666;
-    margin-bottom: 30px;
-    font-size: 16px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 40px;
+    font-size: 18px;
 }
 
 .login-big-btn {
-    background: #4CAF50;
-    color: white;
+    background: linear-gradient(135deg, #ffd700, #ffaa00);
     border: none;
-    padding: 12px 30px;
-    border-radius: 40px;
-    font-size: 18px;
+    padding: 15px 40px;
+    border-radius: 50px;
+    font-size: 20px;
     font-weight: 700;
     cursor: pointer;
     width: 100%;
+    color: #1a1a2e;
+    box-shadow: 0 10px 30px rgba(255,215,0,0.3);
+    transition: all 0.3s;
+}
+
+.login-big-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 15px 40px rgba(255,215,0,0.5);
 }
 
 /* ===== МОДАЛЬНОЕ ОКНО ===== */
@@ -238,304 +302,329 @@ body.dark-theme .login-card {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 2000;
-    padding: 15px;
+    padding: 20px;
 }
 
 .role-modal {
-    background: white;
-    padding: 30px;
-    border-radius: 30px;
-    max-width: 600px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(30px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50px;
+    padding: 40px;
+    max-width: 700px;
     width: 100%;
     max-height: 90vh;
     overflow-y: auto;
-    border: 3px solid #4CAF50;
-}
-
-body.dark-theme .role-modal {
-    background: #1a2a2a;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
 }
 
 .role-modal h2 {
-    color: #4CAF50;
-    font-size: 28px;
-    margin-bottom: 20px;
+    color: white;
+    font-size: 32px;
+    margin-bottom: 30px;
     text-align: center;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.2);
 }
 
 .role-options {
     display: flex;
-    gap: 20px;
-    margin: 30px 0;
+    gap: 25px;
+    margin: 40px 0;
     flex-wrap: wrap;
 }
 
 .role-option {
     flex: 1;
-    min-width: 180px;
-    padding: 25px 15px;
-    border: 2px solid #e0e0e0;
-    border-radius: 20px;
-    background: #f9f9f9;
+    min-width: 200px;
+    padding: 35px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 40px;
     cursor: pointer;
     transition: all 0.3s;
     text-align: center;
 }
 
-body.dark-theme .role-option {
-    background: #2a3a3a;
-    border-color: #4CAF50;
-}
-
 .role-option:hover {
-    border-color: #4CAF50;
-    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.2);
+    border-color: #ffd700;
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
 }
 
 .role-icon {
-    font-size: 40px;
-    margin-bottom: 10px;
+    font-size: 48px;
+    margin-bottom: 15px;
 }
 
 .role-option h3 {
-    color: #4CAF50;
-    font-size: 20px;
+    color: #ffd700;
+    font-size: 24px;
+    margin-bottom: 10px;
 }
 
 /* ===== ПРЕДМЕТНАЯ СЕТКА ===== */
 .subjects-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 12px;
-    margin: 20px 0;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 15px;
+    margin: 25px 0;
 }
 
 .subject-card {
-    background: white;
-    border: 2px solid #e0e0e0;
-    border-radius: 16px;
-    padding: 15px 10px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 30px;
+    padding: 20px 15px;
     cursor: pointer;
     transition: all 0.3s;
     text-align: center;
 }
 
-body.dark-theme .subject-card {
-    background: #1a2a2a;
-    border-color: #4CAF50;
-}
-
 .subject-card:hover {
-    border-color: #4CAF50;
-    transform: translateY(-3px);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #ffd700;
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
 }
 
 .subject-card.selected {
-    border-color: #4CAF50;
-    background: #e8f5e9;
-}
-
-body.dark-theme .subject-card.selected {
-    background: #2a4a3a;
+    background: rgba(255, 215, 0, 0.2);
+    border-color: #ffd700;
+    box-shadow: 0 0 30px rgba(255,215,0,0.3);
 }
 
 .subject-icon {
-    font-size: 32px;
-    margin-bottom: 8px;
+    font-size: 36px;
+    margin-bottom: 10px;
 }
 
 .subject-name {
-    color: #4CAF50;
+    color: white;
     font-size: 16px;
     font-weight: 700;
-    margin-bottom: 4px;
-    word-break: break-word;
+    margin-bottom: 5px;
+    text-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
 .subject-count {
-    color: #666;
+    color: rgba(255, 255, 255, 0.7);
     font-size: 12px;
 }
 
 /* ===== СЕТКА ВИКТОРИН ===== */
 .quizzes-section {
-    margin-top: 30px;
+    margin-top: 35px;
 }
 
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
     flex-wrap: wrap;
     gap: 15px;
 }
 
 .section-title {
-    color: #4CAF50;
-    font-size: 24px;
+    color: white;
+    font-size: 28px;
     font-weight: 700;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.2);
 }
 
 .add-quiz-btn {
-    background: #4CAF50;
-    color: white;
-    border: none;
-    padding: 10px 24px;
-    border-radius: 30px;
-    font-size: 14px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 12px 28px;
+    border-radius: 40px;
+    font-size: 15px;
     font-weight: 600;
     cursor: pointer;
-    white-space: nowrap;
+    color: white;
+    transition: all 0.3s;
+}
+
+.add-quiz-btn:hover {
+    background: rgba(255, 215, 0, 0.2);
+    border-color: #ffd700;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(255,215,0,0.2);
 }
 
 .quiz-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
 }
 
 .quiz-card {
-    background: white;
-    border: 2px solid #e0e0e0;
-    border-radius: 20px;
-    padding: 16px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 35px;
+    padding: 20px;
     transition: all 0.3s;
 }
 
-body.dark-theme .quiz-card {
-    background: #1a2a2a;
-    border-color: #4CAF50;
-}
-
 .quiz-card:hover {
-    border-color: #4CAF50;
-    transform: translateY(-3px);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #ffd700;
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
 }
 
 .quiz-header {
     display: flex;
     justify-content: space-between;
-    align-items: start;
-    margin-bottom: 12px;
+    align-items: center;
+    margin-bottom: 15px;
 }
 
 .quiz-badge {
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 30px;
+    font-size: 12px;
     font-weight: 700;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
 }
 
 .badge-kahoot {
-    background: #ffeb3b;
-    color: #333;
-    border: 1px solid #ffc107;
+    background: rgba(255, 215, 0, 0.3);
+    border-color: #ffd700;
 }
 
 .badge-simple {
-    background: #e3f2fd;
-    color: #1976d2;
-    border: 1px solid #2196F3;
+    background: rgba(0, 255, 255, 0.3);
+    border-color: #00ffff;
 }
 
 .delete-btn {
     background: none;
     border: none;
-    font-size: 18px;
+    font-size: 20px;
     cursor: pointer;
-    color: #f44336;
-    padding: 4px 8px;
-    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 5px 10px;
+    border-radius: 15px;
+    transition: all 0.3s;
+}
+
+.delete-btn:hover {
+    background: rgba(255, 68, 68, 0.2);
+    color: #ff4444;
+    transform: scale(1.1);
 }
 
 .quiz-class {
-    background: #e8f5e9;
-    color: #4CAF50;
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffd700;
     display: inline-block;
-    padding: 4px 10px;
-    border-radius: 20px;
+    padding: 5px 15px;
+    border-radius: 30px;
     font-weight: 600;
     font-size: 12px;
-    margin-bottom: 10px;
-    border: 1px solid #4CAF50;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
 .quiz-title {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
-    color: #4CAF50;
-    margin-bottom: 6px;
+    color: white;
+    margin-bottom: 8px;
     line-height: 1.3;
+    text-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
 .quiz-subject {
-    color: #2196F3;
+    color: #00ffff;
     font-size: 14px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     font-weight: 500;
 }
 
 .quiz-link {
-    background: #f5f5f5;
-    padding: 6px 10px;
-    border-radius: 8px;
-    color: #666;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 8px 12px;
+    border-radius: 15px;
+    color: rgba(255, 255, 255, 0.7);
     font-size: 11px;
     word-break: break-all;
-    margin: 10px 0;
+    margin: 12px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .quiz-actions {
     display: flex;
-    gap: 8px;
-    margin-top: 12px;
+    gap: 10px;
+    margin-top: 15px;
 }
 
 .btn {
-    padding: 8px 12px;
+    padding: 10px 15px;
     border: none;
-    border-radius: 20px;
+    border-radius: 30px;
     font-weight: 600;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 13px;
     flex: 1;
     text-align: center;
     text-decoration: none;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    transition: all 0.3s;
+}
+
+.btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
 }
 
 .btn-teacher {
-    background: #4CAF50;
-    color: white;
+    border-color: #ffd700;
+}
+.btn-teacher:hover {
+    background: rgba(255, 215, 0, 0.2);
 }
 
 .btn-student {
-    background: #2196F3;
-    color: white;
+    border-color: #00ffff;
+}
+.btn-student:hover {
+    background: rgba(0, 255, 255, 0.2);
 }
 
 .btn-external {
-    background: #ff9800;
-    color: white;
+    border-color: #ff9800;
+}
+.btn-external:hover {
+    background: rgba(255, 152, 0, 0.2);
 }
 
 /* ===== ФОРМА СОЗДАНИЯ ===== */
 .quiz-form {
-    background: white;
-    border: 3px solid #4CAF50;
-    border-radius: 20px;
-    padding: 25px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 40px;
+    padding: 30px;
     margin-bottom: 30px;
     display: none;
-}
-
-body.dark-theme .quiz-form {
-    background: #1a2a2a;
 }
 
 .quiz-form.visible {
@@ -543,14 +632,14 @@ body.dark-theme .quiz-form {
 }
 
 .form-group {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 }
 
 .form-group label {
     display: block;
-    color: #4CAF50;
-    margin-bottom: 6px;
-    font-size: 14px;
+    color: #ffd700;
+    margin-bottom: 8px;
+    font-size: 15px;
     font-weight: 600;
 }
 
@@ -558,132 +647,133 @@ body.dark-theme .quiz-form {
 .form-group select,
 .form-group textarea {
     width: 100%;
-    padding: 10px 14px;
-    border-radius: 20px;
-    border: 2px solid #e0e0e0;
-    background: white;
-    color: #333;
+    padding: 12px 18px;
+    border-radius: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.2);
+    color: white;
     font-size: 14px;
+    backdrop-filter: blur(5px);
 }
 
-body.dark-theme .form-group input,
-body.dark-theme .form-group select,
-body.dark-theme .form-group textarea {
-    background: #2a3a3a;
-    border-color: #4CAF50;
-    color: #e0e0e0;
+.form-group input:focus,
+.form-group select:focus {
+    border-color: #ffd700;
+    outline: none;
+    box-shadow: 0 0 20px rgba(255,215,0,0.2);
 }
 
 .radio-group {
     display: flex;
-    gap: 15px;
+    gap: 20px;
     flex-wrap: wrap;
 }
 
 .radio-option {
     display: flex;
     align-items: center;
-    gap: 6px;
-    background: #f5f5f5;
-    padding: 8px 16px;
-    border-radius: 25px;
-    border: 2px solid #e0e0e0;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px 20px;
+    border-radius: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
     cursor: pointer;
-    font-size: 13px;
+    color: white;
+    transition: all 0.3s;
 }
 
 .radio-option.selected {
-    border-color: #4CAF50;
-    background: #e8f5e9;
+    background: rgba(255, 215, 0, 0.2);
+    border-color: #ffd700;
 }
 
 .submit-quiz {
-    background: #4CAF50;
-    color: white;
+    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    color: #1a1a2e;
     border: none;
-    padding: 12px;
-    border-radius: 25px;
+    padding: 14px;
+    border-radius: 40px;
     font-weight: 700;
     font-size: 16px;
     cursor: pointer;
     width: 100%;
-    margin-top: 10px;
+    margin-top: 15px;
+    box-shadow: 0 10px 30px rgba(255,215,0,0.3);
+    transition: all 0.3s;
+}
+
+.submit-quiz:hover {
+    transform: scale(1.02);
+    box-shadow: 0 15px 40px rgba(255,215,0,0.5);
 }
 
 /* ===== СЕТКА ПРОВЕДЕННЫХ ВИКТОРИН ===== */
 .sessions-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 20px;
     margin-top: 20px;
 }
 
 .session-card {
-    background: #f9f9f9;
-    border: 2px solid #e0e0e0;
-    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 35px;
     padding: 20px;
     height: fit-content;
-}
-
-body.dark-theme .session-card {
-    background: #2a3a3a;
-    border-color: #4CAF50;
 }
 
 .session-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     margin-bottom: 15px;
-    flex-wrap: wrap;
     gap: 10px;
 }
 
 .session-title {
-    color: #4CAF50;
+    color: #ffd700;
     font-size: 18px;
     font-weight: 700;
     line-height: 1.3;
 }
 
 .session-date {
-    color: #666;
-    font-size: 12px;
-    margin-top: 4px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 11px;
+    margin-top: 5px;
 }
 
 .session-status {
-    padding: 4px 12px;
-    border-radius: 20px;
+    padding: 5px 12px;
+    border-radius: 25px;
     font-size: 11px;
     font-weight: 700;
     white-space: nowrap;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .status-active {
-    background: #e8f5e9;
+    background: rgba(76, 175, 80, 0.2);
+    border-color: #4CAF50;
     color: #4CAF50;
-    border: 1px solid #4CAF50;
 }
 
 .status-finished {
-    background: #e3f2fd;
+    background: rgba(33, 150, 243, 0.2);
+    border-color: #2196F3;
     color: #2196F3;
-    border: 1px solid #2196F3;
 }
 
 .students-list {
-    background: white;
-    border-radius: 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 20px;
     padding: 12px;
     margin: 15px 0;
     max-height: 200px;
     overflow-y: auto;
-}
-
-body.dark-theme .students-list {
-    background: #1a2a2a;
 }
 
 .student-item {
@@ -691,8 +781,9 @@ body.dark-theme .students-list {
     justify-content: space-between;
     align-items: center;
     padding: 8px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     font-size: 13px;
+    color: white;
 }
 
 .student-item:last-child {
@@ -702,25 +793,33 @@ body.dark-theme .students-list {
 .score-input {
     width: 70px;
     padding: 6px;
-    border-radius: 12px;
-    border: 2px solid #4CAF50;
-    background: white;
+    border-radius: 15px;
+    border: 1px solid #ffd700;
+    background: rgba(0, 0, 0, 0.3);
+    color: white;
     text-align: center;
     font-size: 12px;
 }
 
 .finish-quiz-btn,
 .save-scores-btn {
-    background: #4CAF50;
-    color: white;
-    border: none;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    color: #ffd700;
     padding: 10px;
-    border-radius: 20px;
+    border-radius: 25px;
     font-weight: 600;
     font-size: 13px;
     cursor: pointer;
     width: 100%;
     margin-top: 10px;
+    transition: all 0.3s;
+}
+
+.finish-quiz-btn:hover,
+.save-scores-btn:hover {
+    background: rgba(255, 215, 0, 0.2);
+    border-color: #ffd700;
 }
 
 /* ===== ОПАСНАЯ ЗОНА ===== */
@@ -728,180 +827,187 @@ body.dark-theme .students-list {
     grid-column: 1 / -1;
     margin-top: 30px;
     text-align: center;
-    padding: 25px;
-    border: 3px solid #f44336;
-    border-radius: 25px;
-    background: rgba(244, 67, 54, 0.05);
+    padding: 30px;
+    background: rgba(244, 67, 54, 0.1);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    border-radius: 40px;
 }
 
 .danger-zone h3 {
-    color: #f44336;
-    margin-bottom: 15px;
-    font-size: 20px;
+    color: #ff4444;
+    margin-bottom: 20px;
+    font-size: 22px;
 }
 
 .clear-stats-btn {
-    background: #f44336;
+    background: linear-gradient(135deg, #ff4444, #ff0000);
     color: white;
     border: none;
-    padding: 12px 30px;
-    border-radius: 40px;
+    padding: 15px 40px;
+    border-radius: 50px;
     font-size: 16px;
     font-weight: bold;
     cursor: pointer;
+    box-shadow: 0 10px 30px rgba(255, 68, 68, 0.4);
     animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); }
-    70% { box-shadow: 0 0 0 15px rgba(244, 67, 54, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); }
+    70% { box-shadow: 0 0 0 20px rgba(255, 68, 68, 0); }
 }
 
 /* ===== РЕЗУЛЬТАТЫ ===== */
 .results-container {
-    background: white;
-    border-radius: 25px;
-    padding: 20px;
-    border: 2px solid #4CAF50;
-}
-
-body.dark-theme .results-container {
-    background: #1a2a2a;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 40px;
+    padding: 30px;
 }
 
 .stats-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
-    margin: 20px 0;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 20px;
+    margin: 25px 0;
 }
 
 .stat-card {
-    background: #f5f5f5;
-    border-radius: 16px;
-    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 30px;
+    padding: 20px;
     text-align: center;
-    border: 2px solid #4CAF50;
 }
 
 .stat-value {
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 700;
-    color: #4CAF50;
+    color: #ffd700;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
 }
 
 .results-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: 14px;
+    color: white;
 }
 
 .results-table th {
-    background: #4CAF50;
-    color: white;
-    padding: 10px;
+    background: rgba(255, 215, 0, 0.2);
+    padding: 15px;
     text-align: left;
+    font-weight: 600;
 }
 
 .results-table td {
-    padding: 10px;
-    border-bottom: 1px solid #e0e0e0;
+    padding: 12px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* ===== ПРОФИЛЬ ===== */
 .profile-container {
     display: grid;
-    grid-template-columns: 250px 1fr;
-    gap: 20px;
+    grid-template-columns: 280px 1fr;
+    gap: 25px;
 }
 
 .profile-sidebar {
-    background: white;
-    border: 2px solid #4CAF50;
-    border-radius: 20px;
-    padding: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 40px;
+    padding: 25px;
     text-align: center;
 }
 
 .profile-main {
-    background: white;
-    border: 2px solid #4CAF50;
-    border-radius: 20px;
-    padding: 20px;
-}
-
-body.dark-theme .profile-sidebar,
-body.dark-theme .profile-main {
-    background: #1a2a2a;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 40px;
+    padding: 25px;
 }
 
 .profile-avatar {
-    width: 100px;
-    height: 100px;
+    width: 120px;
+    height: 120px;
     border-radius: 50%;
-    border: 3px solid #4CAF50;
-    margin-bottom: 15px;
+    border: 3px solid #ffd700;
+    margin-bottom: 20px;
+    box-shadow: 0 0 30px rgba(255,215,0,0.3);
 }
 
 .profile-name {
-    font-size: 18px;
-    color: #4CAF50;
+    font-size: 20px;
+    color: #ffd700;
     font-weight: 700;
     margin-bottom: 5px;
-    word-break: break-word;
 }
 
 .profile-email {
-    color: #666;
-    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
     margin-bottom: 15px;
-    word-break: break-all;
 }
 
 .profile-role {
-    background: #4CAF50;
-    color: white;
+    background: rgba(255, 215, 0, 0.2);
+    border: 1px solid #ffd700;
+    color: #ffd700;
     display: inline-block;
-    padding: 6px 20px;
-    border-radius: 25px;
+    padding: 8px 25px;
+    border-radius: 40px;
     font-size: 14px;
+    font-weight: 600;
 }
 
 .setting-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid #e0e0e0;
+    padding: 15px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     flex-wrap: wrap;
     gap: 10px;
 }
 
 .setting-label {
     font-weight: 600;
-    font-size: 14px;
+    color: white;
+    font-size: 15px;
 }
 
 .setting-description {
-    color: #666;
+    color: rgba(255, 255, 255, 0.5);
     font-size: 12px;
 }
 
 .setting-input {
-    padding: 8px 12px;
-    border-radius: 20px;
-    border: 2px solid #e0e0e0;
-    width: 200px;
+    padding: 8px 15px;
+    border-radius: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.2);
+    color: white;
+    width: 220px;
     font-size: 13px;
 }
 
-body.dark-theme .setting-input {
-    background: #2a3a3a;
-    border-color: #4CAF50;
-    color: #e0e0e0;
+.setting-input:focus {
+    border-color: #ffd700;
+    outline: none;
 }
 
-/* ===== МОБИЛЬНАЯ АДАПТАЦИЯ ===== */
+/* ===== АДАПТАЦИЯ ===== */
 @media (max-width: 768px) {
     .header {
         flex-direction: column;
@@ -911,6 +1017,7 @@ body.dark-theme .setting-input {
     .header-left {
         width: 100%;
         justify-content: center;
+        gap: 15px;
     }
     
     .nav-menu {
@@ -919,7 +1026,7 @@ body.dark-theme .setting-input {
     }
     
     .nav-link {
-        padding: 6px 12px;
+        padding: 6px 15px;
         font-size: 13px;
     }
     
@@ -929,93 +1036,50 @@ body.dark-theme .setting-input {
     }
     
     .user-card {
-        padding: 3px 10px 3px 3px;
+        padding: 4px 15px 4px 4px;
     }
     
     .avatar {
-        width: 30px;
-        height: 30px;
+        width: 32px;
+        height: 32px;
     }
     
     .user-name {
-        font-size: 12px;
-    }
-    
-    .user-role {
-        font-size: 10px;
+        font-size: 13px;
     }
     
     .login-btn, .logout-btn, .theme-btn {
-        padding: 6px 12px;
+        padding: 6px 15px;
         font-size: 12px;
-    }
-    
-    .main-container {
-        padding: 0 10px;
-        margin: 10px auto;
     }
     
     .subjects-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
-    }
-    
-    .subject-card {
-        padding: 10px 5px;
-    }
-    
-    .subject-icon {
-        font-size: 24px;
-    }
-    
-    .subject-name {
-        font-size: 13px;
-    }
-    
-    .subject-count {
-        font-size: 11px;
-    }
-    
-    .section-header {
-        flex-direction: column;
-        align-items: flex-start;
         gap: 10px;
     }
     
-    .add-quiz-btn {
-        width: 100%;
-        text-align: center;
+    .subject-card {
+        padding: 15px 10px;
+    }
+    
+    .subject-icon {
+        font-size: 28px;
+    }
+    
+    .subject-name {
+        font-size: 14px;
     }
     
     .quiz-grid {
         grid-template-columns: 1fr;
-        gap: 12px;
-    }
-    
-    .quiz-card {
-        padding: 14px;
-    }
-    
-    .quiz-title {
-        font-size: 16px;
-    }
-    
-    .quiz-actions {
-        flex-direction: column;
-    }
-    
-    .btn {
-        width: 100%;
     }
     
     .sessions-grid {
         grid-template-columns: 1fr;
-        gap: 15px;
     }
     
     .profile-container {
         grid-template-columns: 1fr;
-        gap: 15px;
     }
     
     .setting-item {
@@ -1031,23 +1095,14 @@ body.dark-theme .setting-input {
         grid-template-columns: 1fr 1fr;
     }
     
-    .results-table {
-        font-size: 12px;
-    }
-    
-    .results-table th,
-    .results-table td {
-        padding: 6px;
-    }
-    
     .danger-zone {
-        padding: 15px;
+        padding: 20px;
     }
     
     .clear-stats-btn {
-        padding: 10px 20px;
-        font-size: 14px;
         width: 100%;
+        padding: 12px;
+        font-size: 14px;
     }
 }
 
@@ -1068,8 +1123,10 @@ body.dark-theme .setting-input {
         flex-direction: column;
     }
     
-    .radio-option {
-        width: 100%;
+    .quiz-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
     }
     
     .session-header {
@@ -1091,14 +1148,29 @@ body.dark-theme .setting-input {
 /* Загрузка */
 .loading {
     text-align: center;
-    padding: 40px;
-    color: #4CAF50;
-    font-size: 18px;
-    background: white;
-    border-radius: 20px;
-    border: 2px solid #4CAF50;
+    padding: 60px;
+    color: white;
+    font-size: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border-radius: 50px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-body.dark-theme .loading {
-    background: #1a2a2a;
+/* Скроллбар */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 215, 0, 0.3);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 215, 0, 0.5);
 }
