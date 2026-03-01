@@ -9,7 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 </head>
-<body>
+<body class="light-theme">
     <header class="header">
         <div style="display: flex; align-items: center; gap: 30px; flex-wrap: wrap;">
             <div class="logo" onclick="window.location='index.html'">
@@ -21,6 +21,7 @@
                 <a href="results.html" class="nav-link">Результаты</a>
                 <a href="profile.html" class="nav-link">Профиль</a>
             </nav>
+            <button class="theme-btn" onclick="toggleTheme()" id="themeToggle">🌙 Темная</button>
         </div>
         <div id="userSection"></div>
     </header>
@@ -71,5 +72,42 @@
 
     <script src="firebase.js"></script>
     <script src="app.js"></script>
+    <script>
+        // Переключение темы
+        function toggleTheme() {
+            const body = document.body;
+            const themeBtn = document.getElementById('themeToggle');
+            
+            if (body.classList.contains('light-theme')) {
+                body.classList.remove('light-theme');
+                body.classList.add('dark-theme');
+                themeBtn.textContent = '☀️ Светлая';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.classList.remove('dark-theme');
+                body.classList.add('light-theme');
+                themeBtn.textContent = '🌙 Темная';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        // Загружаем сохраненную тему
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            document.body.classList.remove('light-theme');
+            document.body.classList.add('dark-theme');
+            document.getElementById('themeToggle').textContent = '☀️ Светлая';
+        }
+
+        // Проверяем, есть ли в URL параметр для открытия формы
+        if (window.location.hash === '#addQuiz') {
+            setTimeout(() => {
+                const form = document.getElementById('quizForm');
+                if (form) {
+                    form.classList.add('visible');
+                }
+            }, 1000);
+        }
+    </script>
 </body>
 </html>
