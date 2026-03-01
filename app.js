@@ -1,6 +1,4 @@
 // ===== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =====
-// Убираем повторные объявления, оставляем только те, что не объявлены в firebase.js
-
 // Базовый список предметов
 const baseSubjects = [
     'Русский язык', 'Алгебра', 'Геометрия', 'Математика', 
@@ -168,9 +166,9 @@ function updateUI() {
         userSection.innerHTML = `
             <div class="user-card">
                 <img src="${currentUser.photoURL}" class="avatar">
-                <div style="display: flex; flex-direction: column;">
-                    <span style="font-weight: 600;">${userFullName || currentUser.displayName}</span>
-                    <span style="font-size: 12px; color: #4CAF50;">${userRole === 'teacher' ? 'Учитель' : 'Ученик'}</span>
+                <div class="user-info">
+                    <span class="user-name">${userFullName || currentUser.displayName}</span>
+                    <span class="user-role">${userRole === 'teacher' ? 'Учитель' : 'Ученик'}</span>
                 </div>
                 <button onclick="signOut()" class="logout-btn">Выйти</button>
             </div>
@@ -448,7 +446,7 @@ function loadQuizzesBySubject(subject) {
                 
                 html += `
                     <div class="quiz-card">
-                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div class="quiz-header">
                             <span class="quiz-badge ${q.type === 'kahoot' ? 'badge-kahoot' : 'badge-simple'}">
                                 ${q.type === 'kahoot' ? '🎮 Kahoot' : '📝 Простая'}
                             </span>
@@ -674,7 +672,7 @@ async function joinQuiz(quizId, link, subject, title, maxScore) {
     }
 }
 
-// ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ С КНОПКОЙ ОЧИСТКИ =====
+// ===== ЗАГРУЗКА СЕССИЙ УЧИТЕЛЯ (СЕТКОЙ) =====
 function loadTeacherSessions() {
     db.ref(`teacherSessions/${currentUser.uid}`).on('value', (snapshot) => {
         const sessions = snapshot.val();
@@ -686,7 +684,7 @@ function loadTeacherSessions() {
             return;
         }
 
-        let html = '';
+        let html = '<div class="sessions-grid">';
         const sortedIds = Object.keys(sessions).sort((a, b) => {
             return (sessions[b].startedAt || 0) - (sessions[a].startedAt || 0);
         });
@@ -699,8 +697,8 @@ function loadTeacherSessions() {
                 <div class="session-card">
                     <div class="session-header">
                         <div>
-                            <strong style="color: #4CAF50; font-size: 20px;">${s.quizSubject} - ${s.quizTitle}</strong>
-                            <div style="color: #666; margin-top: 5px;">${date}</div>
+                            <div class="session-title">${s.quizSubject} - ${s.quizTitle}</div>
+                            <div class="session-date">${date}</div>
                         </div>
                         <span class="session-status ${s.status === 'active' ? 'status-active' : 'status-finished'}">
                             ${s.status === 'active' ? '🟢 Активна' : '🔵 Завершена'}
@@ -713,13 +711,13 @@ function loadTeacherSessions() {
                     
                     ${s.status === 'active' ? `
                         <button class="finish-quiz-btn" onclick="finishQuiz('${id}')">
-                            🏁 Завершить викторину
+                            🏁 Завершить
                         </button>
                     ` : ''}
                     
                     ${s.status === 'finished' ? `
                         <button class="save-scores-btn" onclick="saveScores('${id}')">
-                            💾 Сохранить результаты
+                            💾 Сохранить баллы
                         </button>
                     ` : ''}
                 </div>
@@ -731,12 +729,13 @@ function loadTeacherSessions() {
             <div class="danger-zone">
                 <h3>⚠️ Опасная зона</h3>
                 <button class="clear-stats-btn" onclick="clearAllStats()">
-                    🗑️ ОЧИСТИТЬ ВСЮ СТАТИСТИКУ
+                    🗑️ ОЧИСТИТЬ ВСЁ
                 </button>
-                <p>Это удалит все результаты всех учеников навсегда!</p>
+                <p style="font-size: 12px; margin-top: 10px;">Удалит все результаты навсегда</p>
             </div>
         `;
         
+        html += '</div>';
         container.innerHTML = html;
     });
 }
@@ -813,7 +812,7 @@ async function saveScores(sessionId) {
     }
 }
 
-// ===== НОВАЯ ФУНКЦИЯ ДЛЯ ОЧИСТКИ СТАТИСТИКИ =====
+// ===== ОЧИСТКА ВСЕЙ СТАТИСТИКИ =====
 async function clearAllStats() {
     if (!confirm('⚠️ ВНИМАНИЕ! Вы уверены, что хотите удалить ВСЕ результаты? Это действие нельзя отменить!')) return;
     
