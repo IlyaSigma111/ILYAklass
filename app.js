@@ -1,5 +1,4 @@
 // ===== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =====
-// Базовый список предметов
 const baseSubjects = [
     'Русский язык', 'Алгебра', 'Геометрия', 'Математика', 
     'Химия', 'Физика', 'Литература', 'Английский язык', 
@@ -9,16 +8,328 @@ const baseSubjects = [
 // Telegram Bot настройки
 const TELEGRAM_BOT_TOKEN = '8632118104:AAFn7dJ-Zd4c7Xki_8cZKjDIc0JjU8Ubt5E';
 const TELEGRAM_CHAT_ID = '1474901393';
-
-// Хранилище последнего обновления для обработки команд
 let lastUpdateId = 0;
+let pollingActive = true;
+
+// ===== TELEGRAM ФУНКЦИИ =====
+async function sendTelegramMessage(text, chatId = TELEGRAM_CHAT_ID) {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: chatId,
+                text: text,
+                parse_mode: 'HTML'
+            })
+        });
+        const data = await response.json();
+        console.log('Telegram response:', data);
+        return data;
+    } catch (error) {
+        console.error('Ошибка отправки в Telegram:', error);
+    }
+}
+
+async function getTelegramUpdates() {
+    try {
+        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=10`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.ok && data.result.length > 0) {
+            for (const update of data.result) {
+                lastUpdateId = update.update_id;
+                
+                if (update.message && update.message.text) {
+                    const chatId = update.message.chat.id;
+                    const text = update.message.text.trim();
+                    
+                    // Проверяем что сообщение от нужного чата или разрешаем всем
+                    await handleTelegramCommand(text, chatId);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка получения обновлений:', error);
+    }
+    
+    if (pollingActive) {
+        setTimeout(getTelegramUpdates, 2000);
+    }
+}
+
+async function handleTelegramCommand(command, chatId) {
+    let response = '';
+    
+    switch(command) {
+        case '/start':
+            response = `
+🚀 <b>Добро пожаловать в бота ИЛЬЯКЛАСС!</b>
+
+📊 <b>Доступные команды:</b>
+
+/stats - Полная статистика
+/teachers - Список учителей
+/students - Список учеников
+/quizzes - Все викторины
+/results - Все результаты
+/top - Топ учеников
+/active - Активные викторины
+/help - Помощь
+            `;
+            break;
+            
+        case '/help':
+            response = `
+📚 <b>Помощь по командам:</b>
+
+/stats - общая статистика по платформе
+/teachers - список всех учителей
+/students - список всех учеников
+/quizzes - количество и список викторин
+/results - статистика по результатам
+/top - топ учеников по баллам
+/active - список активных викторин
+            `;
+            break;
+            
+        case '/stats':
+            response = await getFullStats();
+            break;
+            
+        case '/teachers':
+            response = await getTeachersList();
+            break;
+            
+        case '/students':
+            response = await getStudentsList();
+            break;
+            
+        case '/quizzes':
+            response = await getQuizzesList();
+            break;
+            
+        case '/results':
+            response = await getResultsStats();
+            break;
+            
+        case '/top':
+            response = await getTopStudents();
+            break;
+            
+        case '/active':
+            response = await getActiveQuizzes();
+            break;
+            
+        default:
+            if (command.startsWith('/')) {
+                response = '❌ Неизвестная команда. Напишите /help';
+            } else {
+                return; // Игнорируем не-команды
+            }
+    }
+    
+    if (response) {
+        await sendTelegramMessage(response, chatId);
+    }
+}
+
+async function getFullStats() {
+    try {
+        const [usersSnap, resultsSnap, sessionsSnap, quizzesSnap] = await Promise.all([
+            db.ref('users').once('value'),
+            db.ref('results').once('value'),
+            db.ref('sessions').once('value'),
+            db.ref('quizzes').once('value')
+        ]);
+        
+        const users = usersSnap.val() || {};
+        const results = resultsSnap.val() || {};
+        const sessions = sessionsSnap.val() || {};
+        const quizzes = quizzesSnap.val() || {};
+        
+        let teachers = 0, students = 0;
+        const teachersList = [];
+        const studentsList = [];
+        
+        Object.entries(users).forEach(([id, u]) => {
+            if (u.role === 'teacher') {
+                teachers++;
+                teachersList.push(`👨‍🏫 ${u.fullName || u.googleName}`);
+            } else if (u.role === 'student') {
+                students++;
+                studentsList.push(`👨‍🎓 ${u.fullName || u.googleName}`);
+            }
+        });
+        
+        const totalSessions = Object.keys(sessions).length;
+        const activeSessions = Object.values(sessions).filter(s => s.status === 'active').length;
+        const totalResults = Object.keys(results).length;
+        const totalQuizzes = Object.keys(quizzes).length;
+        
+        let totalScore = 0;
+        Object.values(results).forEach(r => totalScore += r.score || 0);
+        const avgScore = totalResults > 0 ? (totalScore / totalResults).toFixed(1) : 0;
+        
+        return `
+📊 <b>ПОЛНАЯ СТАТИСТИКА ИЛЬЯКЛАСС</b>
+
+👥 <b>Пользователи:</b>
+• Учителей: ${teachers}
+• Учеников: ${students}
+• Всего: ${teachers + students}
+
+📚 <b>Викторины:</b>
+• Всего создано: ${totalQuizzes}
+• Проведено игр: ${totalSessions}
+• Активных сейчас: ${activeSessions}
+
+📝 <b>Результаты:</b>
+• Всего результатов: ${totalResults}
+• Средний балл: ${avgScore}
+• Сумма баллов: ${totalScore}
+
+👨‍🏫 <b>Учителя (${teachers}):</b>
+${teachersList.slice(0, 5).join('\n')}${teachersList.length > 5 ? `\n... и еще ${teachersList.length - 5}` : ''}
+
+👨‍🎓 <b>Ученики (${students}):</b>
+${studentsList.slice(0, 5).join('\n')}${studentsList.length > 5 ? `\n... и еще ${studentsList.length - 5}` : ''}
+
+🕐 ${new Date().toLocaleString('ru-RU')}
+        `;
+    } catch (error) {
+        console.error('Ошибка stats:', error);
+        return '❌ Ошибка получения статистики';
+    }
+}
+
+async function getTeachersList() {
+    const usersSnap = await db.ref('users').once('value');
+    const users = usersSnap.val() || {};
+    
+    let teachers = [];
+    Object.values(users).forEach(u => {
+        if (u.role === 'teacher') {
+            teachers.push(`• ${u.fullName || u.googleName}`);
+        }
+    });
+    
+    return teachers.length > 0 
+        ? `👨‍🏫 <b>Список учителей (${teachers.length}):</b>\n\n${teachers.join('\n')}`
+        : '👨‍🏫 Учителей пока нет';
+}
+
+async function getStudentsList() {
+    const usersSnap = await db.ref('users').once('value');
+    const users = usersSnap.val() || {};
+    
+    let students = [];
+    Object.values(users).forEach(u => {
+        if (u.role === 'student') {
+            students.push(`• ${u.fullName || u.googleName}`);
+        }
+    });
+    
+    return students.length > 0 
+        ? `👨‍🎓 <b>Список учеников (${students.length}):</b>\n\n${students.join('\n')}`
+        : '👨‍🎓 Учеников пока нет';
+}
+
+async function getQuizzesList() {
+    const quizzesSnap = await db.ref('quizzes').once('value');
+    const quizzes = quizzesSnap.val() || {};
+    
+    let bySubject = {};
+    Object.values(quizzes).forEach(q => {
+        bySubject[q.subject] = (bySubject[q.subject] || 0) + 1;
+    });
+    
+    let subjects = Object.entries(bySubject)
+        .map(([s, c]) => `• ${s}: ${c} викторин`)
+        .join('\n');
+    
+    return `
+📚 <b>Статистика викторин:</b>
+• Всего: ${Object.keys(quizzes).length}
+
+<b>По предметам:</b>
+${subjects}
+    `;
+}
+
+async function getResultsStats() {
+    const resultsSnap = await db.ref('results').once('value');
+    const results = resultsSnap.val() || {};
+    
+    let bySubject = {};
+    let totalScore = 0;
+    
+    Object.values(results).forEach(r => {
+        bySubject[r.quizSubject] = (bySubject[r.quizSubject] || 0) + 1;
+        totalScore += r.score || 0;
+    });
+    
+    let subjects = Object.entries(bySubject)
+        .map(([s, c]) => `• ${s}: ${c} результатов`)
+        .join('\n');
+    
+    return `
+📝 <b>Статистика результатов:</b>
+• Всего: ${Object.keys(results).length}
+• Сумма баллов: ${totalScore}
+• Средний балл: ${(totalScore / Object.keys(results).length).toFixed(1)}
+
+<b>По предметам:</b>
+${subjects}
+    `;
+}
+
+async function getTopStudents() {
+    const resultsSnap = await db.ref('results').once('value');
+    const results = resultsSnap.val() || {};
+    
+    let studentScores = {};
+    Object.values(results).forEach(r => {
+        if (!studentScores[r.studentName]) {
+            studentScores[r.studentName] = { total: 0, count: 0 };
+        }
+        studentScores[r.studentName].total += r.score || 0;
+        studentScores[r.studentName].count++;
+    });
+    
+    let top = Object.entries(studentScores)
+        .map(([name, data]) => ({ name, avg: data.total / data.count, total: data.total }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 10)
+        .map((s, i) => `${i+1}. ${s.name} — ${s.total} баллов (ср. ${s.avg.toFixed(1)})`)
+        .join('\n');
+    
+    return `🏆 <b>Топ учеников:</b>\n\n${top || 'Пока нет данных'}`;
+}
+
+async function getActiveQuizzes() {
+    const sessionsSnap = await db.ref('sessions').once('value');
+    const sessions = sessionsSnap.val() || {};
+    
+    let active = [];
+    Object.entries(sessions).forEach(([id, s]) => {
+        if (s.status === 'active') {
+            active.push(`• ${s.quizSubject} - ${s.quizTitle}\n  👥 ${Object.keys(s.students || {}).length} учеников`);
+        }
+    });
+    
+    return active.length > 0
+        ? `🟢 <b>Активные викторины (${active.length}):</b>\n\n${active.join('\n\n')}`
+        : '🟢 Активных викторин нет';
+}
 
 // ===== АВТОРИЗАЦИЯ =====
 auth.onAuthStateChanged(async (user) => {
     if (user) {
         currentUser = user;
-        
-        // Загружаем все предметы из БД
         await loadAllSubjects();
         
         const userRef = db.ref('users/' + user.uid);
@@ -60,7 +371,6 @@ auth.onAuthStateChanged(async (user) => {
     }
 });
 
-// Загрузка всех предметов из БД
 async function loadAllSubjects() {
     const subjectsSnap = await db.ref('subjects').once('value');
     const subjects = subjectsSnap.val();
@@ -351,7 +661,7 @@ function loadQuizzesBySubject(subject) {
         if (!container) return;
         
         if (!quizzes) {
-            container.innerHTML = '<p class="empty-message">В этом разделе пока нет викторин</p>';
+            container.innerHTML = '<div class="empty-message">В этом разделе пока нет викторин</div>';
             return;
         }
 
@@ -425,7 +735,7 @@ function loadQuizzesBySubject(subject) {
                 `;
             }
             
-            container.innerHTML = html || '<p class="empty-message">В этом разделе пока нет викторин</p>';
+            container.innerHTML = html || '<div class="empty-message">В этом разделе пока нет викторин</div>';
         };
         
         processQuizzes();
@@ -575,7 +885,6 @@ async function joinQuiz(quizId, link, subject, title, maxScore) {
     }
 }
 
-// ===== КРАСИВЫЙ ДИЗАЙН ПРОВЕДЕННЫХ ВИКТОРИН =====
 function loadTeacherSessions() {
     db.ref(`teacherSessions/${currentUser.uid}`).on('value', (snapshot) => {
         const sessions = snapshot.val();
@@ -745,315 +1054,6 @@ async function saveScores(sessionId) {
     }
 }
 
-// ===== TELEGRAM КОМАНДЫ =====
-async function checkTelegramCommands() {
-    try {
-        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=30`;
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data.ok && data.result.length > 0) {
-            for (const update of data.result) {
-                lastUpdateId = update.update_id;
-                
-                if (update.message && update.message.text) {
-                    const chatId = update.message.chat.id;
-                    const text = update.message.text;
-                    
-                    // Проверяем что сообщение от нужного чата
-                    if (chatId.toString() === TELEGRAM_CHAT_ID) {
-                        await handleCommand(text, chatId);
-                    }
-                }
-            }
-        }
-    } catch (error) {
-        console.error('Ошибка проверки команд:', error);
-    }
-    
-    setTimeout(checkTelegramCommands, 2000);
-}
-
-async function handleCommand(command, chatId) {
-    let response = '';
-    
-    switch(command) {
-        case '/start':
-            response = `
-🚀 <b>Добро пожаловать в бота ИЛЬЯКЛАСС!</b>
-
-📊 <b>Доступные команды:</b>
-
-/stats - Полная статистика
-/teachers - Список учителей
-/students - Список учеников
-/quizzes - Все викторины
-/results - Все результаты
-/top - Топ учеников
-/active - Активные викторины
-/help - Помощь
-            `;
-            break;
-            
-        case '/help':
-            response = `
-📚 <b>Помощь по командам:</b>
-
-/stats - общая статистика по платформе
-/teachers - список всех учителей
-/students - список всех учеников
-/quizzes - количество и список викторин
-/results - статистика по результатам
-/top - топ-10 учеников по баллам
-/active - список активных викторин
-            `;
-            break;
-            
-        case '/stats':
-            response = await getFullStats();
-            break;
-            
-        case '/teachers':
-            response = await getTeachersList();
-            break;
-            
-        case '/students':
-            response = await getStudentsList();
-            break;
-            
-        case '/quizzes':
-            response = await getQuizzesList();
-            break;
-            
-        case '/results':
-            response = await getResultsStats();
-            break;
-            
-        case '/top':
-            response = await getTopStudents();
-            break;
-            
-        case '/active':
-            response = await getActiveQuizzes();
-            break;
-            
-        default:
-            response = '❌ Неизвестная команда. Напишите /help';
-    }
-    
-    if (response) {
-        await sendTelegramMessage(response, chatId);
-    }
-}
-
-// ===== TELEGRAM ФУНКЦИИ =====
-async function sendTelegramMessage(text, chatId = TELEGRAM_CHAT_ID) {
-    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-    
-    try {
-        await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: chatId,
-                text: text,
-                parse_mode: 'HTML'
-            })
-        });
-    } catch (error) {
-        console.error('Ошибка отправки:', error);
-    }
-}
-
-async function getFullStats() {
-    try {
-        const [usersSnap, resultsSnap, sessionsSnap, quizzesSnap] = await Promise.all([
-            db.ref('users').once('value'),
-            db.ref('results').once('value'),
-            db.ref('sessions').once('value'),
-            db.ref('quizzes').once('value')
-        ]);
-        
-        const users = usersSnap.val() || {};
-        const results = resultsSnap.val() || {};
-        const sessions = sessionsSnap.val() || {};
-        const quizzes = quizzesSnap.val() || {};
-        
-        let teachers = 0, students = 0;
-        const teachersList = [];
-        const studentsList = [];
-        
-        Object.entries(users).forEach(([id, u]) => {
-            if (u.role === 'teacher') {
-                teachers++;
-                teachersList.push(`👨‍🏫 ${u.fullName || u.googleName}`);
-            } else if (u.role === 'student') {
-                students++;
-                studentsList.push(`👨‍🎓 ${u.fullName || u.googleName}`);
-            }
-        });
-        
-        const totalSessions = Object.keys(sessions).length;
-        const activeSessions = Object.values(sessions).filter(s => s.status === 'active').length;
-        const totalResults = Object.keys(results).length;
-        const totalQuizzes = Object.keys(quizzes).length;
-        
-        let totalScore = 0;
-        Object.values(results).forEach(r => totalScore += r.score || 0);
-        const avgScore = totalResults > 0 ? (totalScore / totalResults).toFixed(1) : 0;
-        
-        return `
-📊 <b>ПОЛНАЯ СТАТИСТИКА ИЛЬЯКЛАСС</b>
-
-👥 <b>Пользователи:</b>
-• Учителей: ${teachers}
-• Учеников: ${students}
-• Всего: ${teachers + students}
-
-📚 <b>Викторины:</b>
-• Всего создано: ${totalQuizzes}
-• Проведено игр: ${totalSessions}
-• Активных сейчас: ${activeSessions}
-
-📝 <b>Результаты:</b>
-• Всего результатов: ${totalResults}
-• Средний балл: ${avgScore}
-• Сумма баллов: ${totalScore}
-
-👨‍🏫 <b>Учителя (${teachers}):</b>
-${teachersList.slice(0, 5).join('\n')}${teachersList.length > 5 ? `\n... и еще ${teachersList.length - 5}` : ''}
-
-👨‍🎓 <b>Ученики (${students}):</b>
-${studentsList.slice(0, 5).join('\n')}${studentsList.length > 5 ? `\n... и еще ${studentsList.length - 5}` : ''}
-
-🕐 ${new Date().toLocaleString('ru-RU')}
-        `;
-    } catch (error) {
-        return '❌ Ошибка получения статистики';
-    }
-}
-
-async function getTeachersList() {
-    const usersSnap = await db.ref('users').once('value');
-    const users = usersSnap.val() || {};
-    
-    let teachers = [];
-    Object.values(users).forEach(u => {
-        if (u.role === 'teacher') {
-            teachers.push(`• ${u.fullName || u.googleName} (${u.email})`);
-        }
-    });
-    
-    return teachers.length > 0 
-        ? `👨‍🏫 <b>Список учителей (${teachers.length}):</b>\n\n${teachers.join('\n')}`
-        : '👨‍🏫 Учителей пока нет';
-}
-
-async function getStudentsList() {
-    const usersSnap = await db.ref('users').once('value');
-    const users = usersSnap.val() || {};
-    
-    let students = [];
-    Object.values(users).forEach(u => {
-        if (u.role === 'student') {
-            students.push(`• ${u.fullName || u.googleName}`);
-        }
-    });
-    
-    return students.length > 0 
-        ? `👨‍🎓 <b>Список учеников (${students.length}):</b>\n\n${students.join('\n')}`
-        : '👨‍🎓 Учеников пока нет';
-}
-
-async function getQuizzesList() {
-    const quizzesSnap = await db.ref('quizzes').once('value');
-    const quizzes = quizzesSnap.val() || {};
-    
-    let bySubject = {};
-    Object.values(quizzes).forEach(q => {
-        bySubject[q.subject] = (bySubject[q.subject] || 0) + 1;
-    });
-    
-    let subjects = Object.entries(bySubject)
-        .map(([s, c]) => `• ${s}: ${c} викторин`)
-        .join('\n');
-    
-    return `
-📚 <b>Статистика викторин:</b>
-• Всего: ${Object.keys(quizzes).length}
-
-<b>По предметам:</b>
-${subjects}
-    `;
-}
-
-async function getResultsStats() {
-    const resultsSnap = await db.ref('results').once('value');
-    const results = resultsSnap.val() || {};
-    
-    let bySubject = {};
-    let totalScore = 0;
-    
-    Object.values(results).forEach(r => {
-        bySubject[r.quizSubject] = (bySubject[r.quizSubject] || 0) + 1;
-        totalScore += r.score || 0;
-    });
-    
-    let subjects = Object.entries(bySubject)
-        .map(([s, c]) => `• ${s}: ${c} результатов`)
-        .join('\n');
-    
-    return `
-📝 <b>Статистика результатов:</b>
-• Всего: ${Object.keys(results).length}
-• Сумма баллов: ${totalScore}
-• Средний балл: ${(totalScore / Object.keys(results).length).toFixed(1)}
-
-<b>По предметам:</b>
-${subjects}
-    `;
-}
-
-async function getTopStudents() {
-    const resultsSnap = await db.ref('results').once('value');
-    const results = resultsSnap.val() || {};
-    
-    let studentScores = {};
-    Object.values(results).forEach(r => {
-        if (!studentScores[r.studentName]) {
-            studentScores[r.studentName] = { total: 0, count: 0 };
-        }
-        studentScores[r.studentName].total += r.score || 0;
-        studentScores[r.studentName].count++;
-    });
-    
-    let top = Object.entries(studentScores)
-        .map(([name, data]) => ({ name, avg: data.total / data.count, total: data.total }))
-        .sort((a, b) => b.total - a.total)
-        .slice(0, 10)
-        .map((s, i) => `${i+1}. ${s.name} — ${s.total} баллов (ср. ${s.avg.toFixed(1)})`)
-        .join('\n');
-    
-    return `🏆 <b>Топ учеников:</b>\n\n${top || 'Пока нет данных'}`;
-}
-
-async function getActiveQuizzes() {
-    const sessionsSnap = await db.ref('sessions').once('value');
-    const sessions = sessionsSnap.val() || {};
-    
-    let active = [];
-    Object.entries(sessions).forEach(([id, s]) => {
-        if (s.status === 'active') {
-            active.push(`• ${s.quizSubject} - ${s.quizTitle}\n  👥 ${Object.keys(s.students || {}).length} учеников`);
-        }
-    });
-    
-    return active.length > 0
-        ? `🟢 <b>Активные викторины (${active.length}):</b>\n\n${active.join('\n\n')}`
-        : '🟢 Активных викторин нет';
-}
-
-// ===== ОЧИСТКА СТАТИСТИКИ =====
 async function clearAllStats() {
     if (!confirm('⚠️ Удалить ВСЕ результаты?')) return;
     
@@ -1089,7 +1089,6 @@ async function clearAllStats() {
     }
 }
 
-// Результаты ученика
 function loadStudentResults() {
     db.ref('results').orderByChild('studentId').equalTo(currentUser.uid).on('value', (snapshot) => {
         const results = snapshot.val();
@@ -1124,16 +1123,16 @@ function loadStudentResults() {
     });
 }
 
-// Запускаем проверку команд
+// Запускаем Telegram бот
 setTimeout(() => {
-    checkTelegramCommands();
+    getTelegramUpdates();
     sendTelegramMessage(`
 🚀 <b>ИЛЬЯКЛАСС ЗАПУЩЕН!</b>
 
 Бот готов к работе.
 Напишите /help для списка команд.
     `);
-}, 5000);
+}, 3000);
 
 // Ежедневная статистика
 setInterval(async () => {
