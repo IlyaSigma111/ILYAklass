@@ -1,6 +1,116 @@
-/* Добавить в конец файла */
+/* ========== ОСНОВНЫЕ СТИЛИ ========== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
 
-/* Центрирование логина */
+body {
+    background: #0b1120;
+    color: white;
+}
+
+/* ========== ШАПКА ========== */
+.header {
+    background: #1a2639;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 3px solid gold;
+}
+
+.logo {
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.logo-il {
+    color: gold;
+}
+
+.logo-yaclass {
+    color: #00ffff;
+}
+
+.nav-menu {
+    display: flex;
+    gap: 20px;
+}
+
+.nav-link {
+    color: white;
+    text-decoration: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+}
+
+.nav-link:hover {
+    background: rgba(255, 215, 0, 0.2);
+}
+
+.nav-link.active {
+    background: gold;
+    color: #0b1120;
+    font-weight: bold;
+}
+
+/* ========== ПОЛЬЗОВАТЕЛЬ ========== */
+.user-card {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 5px 15px 5px 5px;
+    border-radius: 40px;
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid gold;
+}
+
+.role-badge {
+    background: gold;
+    color: #0b1120;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.login-btn {
+    background: gold;
+    color: #0b1120;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 30px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.logout-btn {
+    background: transparent;
+    color: gold;
+    border: 2px solid gold;
+    padding: 8px 20px;
+    border-radius: 30px;
+    cursor: pointer;
+}
+
+/* ========== ОСНОВНОЙ КОНТЕЙНЕР ========== */
+.main-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 30px;
+}
+
+/* ========== КНОПКА ВХОДА ПО ЦЕНТРУ ========== */
 .login-container {
     display: flex;
     justify-content: center;
@@ -9,113 +119,281 @@
 }
 
 .login-card {
-    background: rgba(255,255,255,0.05);
-    backdrop-filter: blur(10px);
-    border: 2px solid #ffd700;
+    background: #1a2639;
+    border: 3px solid gold;
     border-radius: 40px;
-    padding: 4rem;
+    padding: 60px;
     text-align: center;
     max-width: 500px;
-    box-shadow: 0 0 50px #ffd70033;
 }
 
 .login-title {
-    font-size: 3rem;
-    margin-bottom: 1rem;
+    font-size: 48px;
+    margin-bottom: 20px;
 }
 
 .login-subtitle {
     color: #aaa;
-    margin-bottom: 3rem;
+    margin-bottom: 40px;
+    font-size: 18px;
 }
 
 .login-big-btn {
-    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    background: gold;
     color: #0b1120;
     border: none;
-    padding: 1.5rem 4rem;
+    padding: 20px 50px;
     border-radius: 60px;
-    font-size: 1.8rem;
-    font-weight: 700;
+    font-size: 24px;
+    font-weight: bold;
     cursor: pointer;
-    transition: all 0.3s;
-    box-shadow: 0 10px 30px #ffd70066;
 }
 
 .login-big-btn:hover {
-    transform: scale(1.1);
-    box-shadow: 0 20px 50px #ffd700cc;
+    transform: scale(1.05);
+    box-shadow: 0 0 20px gold;
 }
 
-/* Стили для раздела "Мои викторины" */
-.my-quizzes-section {
-    margin-top: 3rem;
-    padding: 2rem;
-    background: rgba(255,255,255,0.02);
+/* ========== МОДАЛЬНОЕ ОКНО ========== */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.role-modal {
+    background: #1a2639;
+    padding: 40px;
+    border-radius: 40px;
+    max-width: 600px;
+    border: 3px solid gold;
+    text-align: center;
+}
+
+.role-modal h2 {
+    color: gold;
+    font-size: 32px;
+    margin-bottom: 20px;
+}
+
+.role-options {
+    display: flex;
+    gap: 30px;
+    margin: 40px 0;
+}
+
+.role-option {
+    flex: 1;
+    padding: 40px 20px;
+    border: 2px solid #334155;
     border-radius: 30px;
-    border: 1px solid #ffd70033;
+    background: #0f172a;
+    cursor: pointer;
+}
+
+.role-option:hover {
+    border-color: gold;
+    transform: scale(1.05);
+}
+
+.role-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.warning-text {
+    color: #ff8888;
+}
+
+/* ========== ФОРМЫ ========== */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    color: gold;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 2px solid #334155;
+    background: #0f172a;
+    color: white;
+}
+
+.form-group input:focus {
+    border-color: gold;
+    outline: none;
+}
+
+.add-quiz-btn {
+    background: gold;
+    color: #0b1120;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 50px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 30px;
+}
+
+.quiz-form {
+    background: #1a2639;
+    padding: 30px;
+    border-radius: 20px;
+    margin-bottom: 30px;
+    border: 2px solid gold;
+    display: none;
+}
+
+.quiz-form.visible {
+    display: block;
+}
+
+.submit-quiz {
+    background: gold;
+    color: #0b1120;
+    border: none;
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+    font-size: 16px;
+}
+
+/* ========== КАРТОЧКИ ВИКТОРИН ========== */
+.quiz-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.quiz-card {
+    background: #1a2639;
+    border: 2px solid gold;
+    border-radius: 20px;
+    padding: 20px;
+}
+
+.quiz-class {
+    background: gold;
+    color: #0b1120;
+    display: inline-block;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.quiz-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: gold;
+    margin-bottom: 10px;
+}
+
+.quiz-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.btn {
+    padding: 10px;
+    border: none;
+    border-radius: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    flex: 1;
+    text-align: center;
+}
+
+.btn-teacher {
+    background: #4f46e5;
+    color: white;
+}
+
+.btn-student {
+    background: #059669;
+    color: white;
+}
+
+/* ========== МОИ ВИКТОРИНЫ ========== */
+.my-quizzes-section {
+    margin-top: 40px;
+    padding: 20px;
+    background: #1a2639;
+    border-radius: 20px;
+    border: 2px solid gold;
 }
 
 .section-title {
-    color: #ffd700;
-    font-size: 1.8rem;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    color: gold;
+    font-size: 24px;
+    margin-bottom: 20px;
 }
 
 .session-card {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid #ffd70033;
-    border-radius: 20px;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
+    background: #0f172a;
+    border: 2px solid gold;
+    border-radius: 15px;
+    padding: 15px;
+    margin-bottom: 15px;
 }
 
 .session-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.session-date {
-    color: #ffd700;
-    font-weight: 600;
+    margin-bottom: 10px;
 }
 
 .session-status {
-    padding: 0.3rem 1rem;
+    padding: 4px 12px;
     border-radius: 20px;
-    font-size: 0.9rem;
+    font-size: 12px;
+    font-weight: bold;
 }
 
 .status-active {
     background: #10b98133;
     color: #10b981;
-    border: 1px solid #10b981;
+    border: 2px solid #10b981;
 }
 
 .status-finished {
     background: #4f46e533;
     color: #4f46e5;
-    border: 1px solid #4f46e5;
+    border: 2px solid #4f46e5;
 }
 
 .students-list {
-    margin: 1rem 0;
-    padding: 1rem;
-    background: #0f172a;
-    border-radius: 15px;
+    background: #1a2639;
+    border-radius: 10px;
+    padding: 10px;
+    margin: 10px 0;
 }
 
 .student-item {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 0.8rem;
-    border-bottom: 1px solid #ffffff1a;
+    padding: 8px;
+    border-bottom: 1px solid #334155;
 }
 
 .student-item:last-child {
@@ -123,35 +401,39 @@
 }
 
 .score-input {
-    width: 80px;
-    padding: 0.5rem;
-    border-radius: 10px;
-    border: 2px solid #ffd700;
+    width: 70px;
+    padding: 5px;
+    border-radius: 5px;
+    border: 2px solid gold;
     background: #0f172a;
     color: white;
     text-align: center;
 }
 
-.finish-quiz-btn {
-    background: #ffd700;
+.finish-quiz-btn,
+.save-scores-btn {
+    background: gold;
     color: #0b1120;
     border: none;
-    padding: 0.8rem 2rem;
-    border-radius: 30px;
-    font-weight: 600;
+    padding: 10px;
+    border-radius: 10px;
+    font-weight: bold;
     cursor: pointer;
-    margin-top: 1rem;
     width: 100%;
+    margin-top: 10px;
 }
 
-.save-scores-btn {
-    background: #10b981;
-    color: white;
-    border: none;
-    padding: 0.8rem 2rem;
-    border-radius: 30px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 1rem;
-    width: 100%;
+.score-badge {
+    background: gold;
+    color: #0b1120;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: bold;
+}
+
+.loading {
+    text-align: center;
+    padding: 50px;
+    color: gold;
+    font-size: 18px;
 }
