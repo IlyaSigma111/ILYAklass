@@ -1,11 +1,5 @@
 // ===== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =====
-let currentUser = null;
-let userRole = null;
-let userFullName = null;
-let teacherSubjects = [];
-let selectedSubject = 'all';
-let quizType = 'kahoot';
-let allSubjects = [];
+// Убираем повторные объявления, оставляем только те, что не объявлены в firebase.js
 
 // Базовый список предметов
 const baseSubjects = [
