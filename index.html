@@ -73,13 +73,14 @@
         auth.onAuthStateChanged(async (user) => {
             if (user) {
                 currentUser = user;
+                
                 const userRef = db.ref('users/' + user.uid);
                 const snapshot = await userRef.once('value');
                 const userData = snapshot.val();
                 
                 if (userData && userData.role) {
                     userRole = userData.role;
-                    userFullName = userData.fullName;
+                    userFullName = userData.fullName || user.displayName; // Если fullName нет, берем из Google
                     document.getElementById('roleModal').style.display = 'none';
                     updateUI();
                     loadContent();
@@ -115,22 +116,13 @@
                 googleName: currentUser.displayName,
                 avatar: currentUser.photoURL,
                 role: role,
-                fullName: '',
+                fullName: currentUser.displayName, // По умолчанию ставим имя из Google
                 registeredAt: Date.now()
             });
             
             document.getElementById('roleModal').style.display = 'none';
-            askFullName();
-        }
-
-        // Запрос ФИО
-        function askFullName() {
-            const name = prompt('Введите вашу фамилию и имя:');
-            if (name) {
-                db.ref('users/' + currentUser.uid).update({ fullName: name });
-                userFullName = name;
-                window.location.reload();
-            }
+            userFullName = currentUser.displayName;
+            window.location.reload();
         }
 
         // Обновление интерфейса
@@ -273,68 +265,112 @@
             });
         }
 
-        // Учитель запускает викторину
+        // ========== ИСПРАВЛЕННАЯ ФУНКЦИЯ STARTQUIZ ==========
         async function startQuiz(quizId, folder, subject, topic, maxScore) {
-            const sessionRef = db.ref('sessions').push();
-            const sessionId = sessionRef.key;
-            
-            await sessionRef.set({
-                quizId: quizId,
-                quizFolder: folder,
-                quizSubject: subject,
-                quizTopic: topic,
-                maxScore: maxScore,
-                teacherId: currentUser.uid,
-                teacherName: userFullName,
-                status: 'active',
-                startedAt: Date.now(),
-                students: {}
-            });
-            
-            await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).set({
-                quizSubject: subject,
-                quizTopic: topic,
-                maxScore: maxScore,
-                status: 'active',
-                startedAt: Date.now(),
-                students: {}
-            });
-            
-            window.open(`https://ilyasigma111.github.io/${folder}/teacher.html?session=${sessionId}`, '_blank');
-            loadTeacherSessions();
+            try {
+                // Проверяем и подготавливаем все значения
+                const teacherName = userFullName || currentUser.displayName || 'Учитель';
+                const safeSubject = subject || 'Без названия';
+                const safeTopic = topic || 'Без темы';
+                const safeMaxScore = maxScore || 0;
+                const safeFolder = folder || '';
+                const safeQuizId = quizId || '';
+                
+                // Создаем сессию
+                const sessionRef = db.ref('sessions').push();
+                const sessionId = sessionRef.key;
+                
+                // Данные для сессии - все поля проверены
+                const sessionData = {
+                    quizId: safeQuizId,
+                    quizFolder: safeFolder,
+                    quizSubject: safeSubject,
+                    quizTopic: safeTopic,
+                    maxScore: safeMaxScore,
+                    teacherId: currentUser.uid,
+                    teacherName: teacherName,
+                    status: 'active',
+                    startedAt: Date.now(),
+                    students: {}
+                };
+                
+                // Сохраняем сессию
+                await sessionRef.set(sessionData);
+                
+                // Сохраняем в teacherSessions
+                await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).set({
+                    quizSubject: safeSubject,
+                    quizTopic: safeTopic,
+                    maxScore: safeMaxScore,
+                    status: 'active',
+                    startedAt: Date.now(),
+                    students: {}
+                });
+                
+                // Открываем панель учителя
+                window.open(`https://ilyasigma111.github.io/${safeFolder}/teacher.html?session=${sessionId}`, '_blank');
+                
+                // Обновляем список
+                loadTeacherSessions();
+                
+            } catch (error) {
+                console.error('Ошибка при запуске викторины:', error);
+                alert('Ошибка при запуске викторины. Проверьте консоль.');
+            }
         }
 
         // Ученик присоединяется
         async function joinQuiz(quizId, folder, subject, topic, maxScore) {
-            if (!userFullName) {
-                askFullName();
-                return;
+            try {
+                const studentName = userFullName || currentUser.displayName || 'Ученик';
+                
+                if (!studentName) {
+                    alert('Ошибка: не удалось определить имя');
+                    return;
+                }
+                
+                // Ищем активную сессию
+                const sessionsSnapshot = await db.ref('sessions').orderByChild('quizId').equalTo(quizId).once('value');
+                const sessions = sessionsSnapshot.val();
+                
+                let activeSession = null;
+                let activeSessionId = null;
+                
+                if (sessions) {
+                    for (const [key, value] of Object.entries(sessions)) {
+                        if (value.status === 'active') {
+                            activeSession = value;
+                            activeSessionId = key;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!activeSession) {
+                    alert('Нет активной викторины');
+                    return;
+                }
+                
+                // Добавляем ученика в сессию
+                await db.ref(`sessions/${activeSessionId}/students/${currentUser.uid}`).set({
+                    name: studentName,
+                    email: currentUser.email,
+                    joinedAt: Date.now()
+                });
+                
+                // Добавляем в teacherSessions
+                await db.ref(`teacherSessions/${activeSession.teacherId}/${activeSessionId}/students/${currentUser.uid}`).set({
+                    name: studentName,
+                    email: currentUser.email
+                });
+                
+                // Открываем страницу ученика
+                window.open(`https://ilyasigma111.github.io/${folder}/student.html?session=${activeSessionId}&student=${currentUser.uid}&name=${encodeURIComponent(studentName)}`, '_blank');
+                
+            } catch (error) {
+                console.error('Ошибка при присоединении:', error);
+                alert('Ошибка при присоединении к викторине');
             }
-            
-            const sessions = await db.ref('sessions').orderByChild('quizId').equalTo(quizId).once('value');
-            let activeSession = null;
-            
-            sessions.forEach(s => {
-                if (s.val().status === 'active') activeSession = { id: s.key, ...s.val() };
-            });
-            
-            if (!activeSession) {
-                alert('Нет активной викторины');
-                return;
-            }
-            
-            await db.ref(`sessions/${activeSession.id}/students/${currentUser.uid}`).set({
-                name: userFullName,
-                email: currentUser.email,
-                joinedAt: Date.now()
-            });
-            
-            await db.ref(`teacherSessions/${activeSession.teacherId}/${activeSession.id}/students/${currentUser.uid}`).set({
-                name: userFullName,
-                email: currentUser.email
-            });
-            
-            window.open(`https://ilyasigma111.github.io/${folder}/student.html?session=${activeSession.id}&student=${currentUser.uid}&name=${encodeURIComponent(userFullName)}`, '_blank');
         }
 
         // Загрузка сессий учителя
@@ -350,15 +386,20 @@
                 }
 
                 let html = '';
-                Object.keys(sessions).sort((a,b) => sessions[b].startedAt - sessions[a].startedAt).forEach(id => {
+                // Сортируем по дате (новые сверху)
+                const sortedIds = Object.keys(sessions).sort((a, b) => {
+                    return (sessions[b].startedAt || 0) - (sessions[a].startedAt || 0);
+                });
+                
+                sortedIds.forEach(id => {
                     const s = sessions[id];
-                    const date = new Date(s.startedAt).toLocaleString();
+                    const date = s.startedAt ? new Date(s.startedAt).toLocaleString() : 'Дата неизвестна';
                     
                     html += `
                         <div class="session-card">
                             <div class="session-header">
                                 <div>
-                                    <strong style="color: gold;">${s.quizSubject} - ${s.quizTopic}</strong>
+                                    <strong style="color: gold;">${s.quizSubject || 'Без названия'} - ${s.quizTopic || 'Без темы'}</strong>
                                     <div style="color: #aaa;">${date}</div>
                                 </div>
                                 <span class="session-status ${s.status === 'active' ? 'status-active' : 'status-finished'}">
@@ -389,15 +430,20 @@
         }
 
         function renderStudents(students, maxScore, sessionId, status) {
-            if (!students) return '<p>Пока нет учеников</p>';
+            if (!students || Object.keys(students).length === 0) {
+                return '<p>Пока нет учеников</p>';
+            }
             
             let html = '';
             Object.keys(students).forEach(id => {
+                const student = students[id];
                 html += `
                     <div class="student-item">
-                        <span>${students[id].name}</span>
+                        <span>${student.name || 'Без имени'}</span>
                         ${status === 'finished' ? 
-                            `<input type="number" class="score-input" id="score-${sessionId}-${id}" max="${maxScore}" min="0" placeholder="0-${maxScore}">` :
+                            `<input type="number" class="score-input" id="score-${sessionId}-${id}" 
+                                    max="${maxScore || 100}" min="0" 
+                                    placeholder="0-${maxScore || 100}">` :
                             '<span style="color: #10b981;">✓ Присоединился</span>'
                         }
                     </div>
@@ -407,38 +453,52 @@
         }
 
         async function finishQuiz(sessionId) {
-            await db.ref(`sessions/${sessionId}`).update({ status: 'finished' });
-            await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).update({ status: 'finished' });
+            try {
+                await db.ref(`sessions/${sessionId}`).update({ status: 'finished' });
+                await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).update({ status: 'finished' });
+            } catch (error) {
+                console.error('Ошибка при завершении:', error);
+                alert('Ошибка при завершении викторины');
+            }
         }
 
         async function saveScores(sessionId) {
-            const session = await db.ref(`sessions/${sessionId}`).once('value');
-            const s = session.val();
-            
-            if (!s || !s.students) return;
-            
-            let count = 0;
-            for (const studentId of Object.keys(s.students)) {
-                const input = document.getElementById(`score-${sessionId}-${studentId}`);
-                if (!input) continue;
+            try {
+                const sessionSnap = await db.ref(`sessions/${sessionId}`).once('value');
+                const session = sessionSnap.val();
                 
-                const score = parseInt(input.value);
-                if (isNaN(score)) continue;
+                if (!session || !session.students) {
+                    alert('Нет учеников в этой викторине');
+                    return;
+                }
                 
-                await db.ref('results').push({
-                    studentId: studentId,
-                    studentName: s.students[studentId].name,
-                    quizSubject: s.quizSubject,
-                    quizTopic: s.quizTopic,
-                    score: score,
-                    maxScore: s.maxScore,
-                    teacherId: currentUser.uid,
-                    date: Date.now()
-                });
-                count++;
+                let count = 0;
+                for (const studentId of Object.keys(session.students)) {
+                    const input = document.getElementById(`score-${sessionId}-${studentId}`);
+                    if (!input) continue;
+                    
+                    const score = parseInt(input.value);
+                    if (isNaN(score)) continue;
+                    
+                    await db.ref('results').push({
+                        studentId: studentId,
+                        studentName: session.students[studentId].name || 'Без имени',
+                        quizSubject: session.quizSubject || 'Без названия',
+                        quizTopic: session.quizTopic || 'Без темы',
+                        score: score,
+                        maxScore: session.maxScore || 0,
+                        teacherId: currentUser.uid,
+                        date: Date.now()
+                    });
+                    count++;
+                }
+                
+                alert(`Сохранено ${count} результатов!`);
+                
+            } catch (error) {
+                console.error('Ошибка при сохранении:', error);
+                alert('Ошибка при сохранении результатов');
             }
-            
-            alert(`Сохранено ${count} результатов!`);
         }
 
         // Результаты ученика
@@ -454,15 +514,22 @@
                 }
 
                 let html = '<div class="students-list">';
-                Object.keys(results).sort((a,b) => results[b].date - results[a].date).forEach(key => {
+                // Сортируем по дате
+                const sortedIds = Object.keys(results).sort((a, b) => {
+                    return (results[b].date || 0) - (results[a].date || 0);
+                });
+                
+                sortedIds.forEach(key => {
                     const r = results[key];
+                    const date = r.date ? new Date(r.date).toLocaleDateString() : 'Дата неизвестна';
+                    
                     html += `
                         <div class="student-item">
                             <div>
-                                <strong>${r.quizSubject} - ${r.quizTopic}</strong>
-                                <div style="color: #aaa;">${new Date(r.date).toLocaleDateString()}</div>
+                                <strong>${r.quizSubject || 'Без названия'} - ${r.quizTopic || 'Без темы'}</strong>
+                                <div style="color: #aaa;">${date}</div>
                             </div>
-                            <span class="score-badge">${r.score}/${r.maxScore}</span>
+                            <span class="score-badge">${r.score || 0}/${r.maxScore || 0}</span>
                         </div>
                     `;
                 });
@@ -472,34 +539,49 @@
         }
 
         function toggleForm() {
-            document.getElementById('quizForm').classList.toggle('visible');
+            const form = document.getElementById('quizForm');
+            if (form) form.classList.toggle('visible');
         }
 
         async function saveQuiz() {
-            const data = {
-                class: document.getElementById('quizClass').value,
-                subject: document.getElementById('quizSubject').value,
-                topic: document.getElementById('quizTopic').value,
-                folder: document.getElementById('quizFolder').value,
-                maxScore: parseInt(document.getElementById('quizMaxScore').value),
-                teacherLink: `https://ilyasigma111.github.io/${document.getElementById('quizFolder').value}/teacher.html`,
-                studentLink: `https://ilyasigma111.github.io/${document.getElementById('quizFolder').value}/student.html`,
-                createdBy: currentUser.uid,
-                createdAt: Date.now()
-            };
+            try {
+                const subject = document.getElementById('quizSubject').value;
+                const topic = document.getElementById('quizTopic').value;
+                const folder = document.getElementById('quizFolder').value;
+                const maxScore = parseInt(document.getElementById('quizMaxScore').value);
+                const quizClass = document.getElementById('quizClass').value;
 
-            if (!data.subject || !data.topic || !data.folder || !data.maxScore) {
-                alert('Заполните все поля');
-                return;
+                if (!subject || !topic || !folder || !maxScore) {
+                    alert('Заполните все поля');
+                    return;
+                }
+
+                const quizData = {
+                    class: quizClass,
+                    subject: subject,
+                    topic: topic,
+                    folder: folder,
+                    maxScore: maxScore,
+                    teacherLink: `https://ilyasigma111.github.io/${folder}/teacher.html`,
+                    studentLink: `https://ilyasigma111.github.io/${folder}/student.html`,
+                    createdBy: currentUser.uid,
+                    createdAt: Date.now()
+                };
+
+                await db.ref('quizzes').push(quizData);
+                
+                // Очищаем форму
+                document.getElementById('quizSubject').value = '';
+                document.getElementById('quizTopic').value = '';
+                document.getElementById('quizFolder').value = '';
+                document.getElementById('quizMaxScore').value = '';
+                
+                document.getElementById('quizForm').classList.remove('visible');
+                
+            } catch (error) {
+                console.error('Ошибка при сохранении викторины:', error);
+                alert('Ошибка при сохранении');
             }
-
-            await db.ref('quizzes').push(data);
-            document.getElementById('quizForm').classList.remove('visible');
-            
-            document.getElementById('quizSubject').value = '';
-            document.getElementById('quizTopic').value = '';
-            document.getElementById('quizFolder').value = '';
-            document.getElementById('quizMaxScore').value = '';
         }
     </script>
 </body>
