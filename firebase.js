@@ -1,6 +1,5 @@
 // firebase.js - Твой конфиг и общие функции
 
-// Твой Firebase конфиг
 const firebaseConfig = {
     apiKey: "AIzaSyA-FGoB1L-euPEfGZvTN0pyfyLGZY4zGyE",
     authDomain: "ilyaklass-b11c0.firebaseapp.com",
@@ -11,97 +10,107 @@ const firebaseConfig = {
     databaseURL: "https://ilyaklass-b11c0-default-rtdb.firebaseio.com/"
 };
 
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
 const provider = new firebase.auth.GoogleAuthProvider();
 
-// Глобальные переменные
 let currentUser = null;
 let userRole = null;
-let userSettings = null;
+let userFullName = null;
 
 // Проверка авторизации
 auth.onAuthStateChanged(async (user) => {
     if (user) {
         currentUser = user;
         
-        // Получаем данные пользователя
         const userRef = db.ref('users/' + user.uid);
         const snapshot = await userRef.once('value');
         const userData = snapshot.val();
         
-        if (userData && userData.role) {
+        if (userData) {
             userRole = userData.role;
-            userSettings = userData.settings || {
-                classFilter: 'all',
-                subjectFilter: 'all',
-                emailNotifications: true,
-                darkMode: true
-            };
+            userFullName = userData.fullName;
             
-            // Обновляем интерфейс на всех страницах
             updateUserInterface();
             
-            // Если есть функция загрузки контента на странице
             if (typeof loadPageContent === 'function') {
                 loadPageContent();
             }
         } else {
-            // Показываем модалку выбора роли
+            // Новый пользователь - показываем выбор роли
             showRoleModal();
         }
     } else {
-        // Не авторизован
         currentUser = null;
         userRole = null;
-        userSettings = null;
+        userFullName = null;
         updateUserInterface();
     }
 });
 
-// Функция входа
 function signIn() {
     auth.signInWithPopup(provider);
 }
 
-// Функция выхода
 function signOut() {
     auth.signOut();
     window.location.href = 'index.html';
 }
 
-// Выбор роли
 async function selectRole(role) {
     if (!currentUser) return;
     
+    // Сначала сохраняем роль
     await db.ref('users/' + currentUser.uid).set({
         email: currentUser.email,
-        name: currentUser.displayName,
+        googleName: currentUser.displayName,
         avatar: currentUser.photoURL,
         role: role,
-        settings: {
-            classFilter: 'all',
-            subjectFilter: 'all',
-            emailNotifications: true,
-            darkMode: true
-        },
+        fullName: '', // Пока пусто, запросим позже
         registeredAt: firebase.database.ServerValue.TIMESTAMP
     });
     
     document.getElementById('roleModal').style.display = 'none';
+    
+    // Запрашиваем ФИО
+    showNameModal();
+}
+
+function showNameModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'nameModal';
+    modal.innerHTML = `
+        <div class="role-modal" style="max-width: 400px;">
+            <h2 style="color: #ffd700;">Введите ваши данные</h2>
+            <p style="color: #aaa; margin: 1rem 0;">Это нужно для отображения в списках учеников</p>
+            <div class="form-group">
+                <label>Фамилия и Имя</label>
+                <input type="text" id="fullNameInput" placeholder="Например: Иванов Иван" style="width: 100%; padding: 1rem; border-radius: 15px; background: #0f172a; border: 2px solid #ffd700; color: white;">
+            </div>
+            <button class="submit-quiz" onclick="saveFullName()" style="margin-top: 1rem;">Сохранить</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+async function saveFullName() {
+    const fullName = document.getElementById('fullNameInput').value;
+    if (!fullName) {
+        alert('Введите фамилию и имя');
+        return;
+    }
+    
+    await db.ref('users/' + currentUser.uid).update({
+        fullName: fullName
+    });
+    
+    userFullName = fullName;
+    document.getElementById('nameModal').remove();
     window.location.reload();
 }
 
-// Сохранение настроек
-async function saveSettings(settings) {
-    if (!currentUser) return;
-    await db.ref('users/' + currentUser.uid + '/settings').update(settings);
-    userSettings = settings;
-}
-
-// Обновление интерфейса пользователя (для всех страниц)
 function updateUserInterface() {
     const userSection = document.getElementById('userSection');
     if (!userSection) return;
@@ -110,19 +119,16 @@ function updateUserInterface() {
         userSection.innerHTML = `
             <div class="user-card">
                 <img src="${currentUser.photoURL}" class="avatar">
-                <span>${currentUser.displayName}</span>
+                <span>${userFullName || currentUser.displayName}</span>
                 <span class="role-badge">${userRole === 'teacher' ? '👨‍🏫 Учитель' : '👨‍🎓 Ученик'}</span>
                 <button onclick="signOut()" class="logout-btn">Выйти</button>
             </div>
         `;
     } else {
-        userSection.innerHTML = `
-            <button onclick="signIn()" class="login-btn">Войти через Google</button>
-        `;
+        userSection.innerHTML = ''; // Убираем кнопку из шапки
     }
 }
 
-// Показать модалку выбора роли
 function showRoleModal() {
     const modal = document.getElementById('roleModal');
     if (modal) {
