@@ -32,6 +32,8 @@ auth.onAuthStateChanged(async (user) => {
             
             if (userRole === 'teacher' && userData.subjects) {
                 teacherSubjects = userData.subjects;
+            } else if (userRole === 'teacher') {
+                teacherSubjects = [...allSubjects];
             }
             
             document.getElementById('roleModal').style.display = 'none';
@@ -441,6 +443,10 @@ function loadQuizzesBySubject(subject) {
                     if (!teacherLink.endsWith('/teacher.html') && !teacherLink.endsWith('/student.html')) {
                         teacherLink = teacherLink.replace(/\/?$/, '') + '/teacher.html';
                         studentLink = studentLink.replace(/\/?$/, '') + '/student.html';
+                    } else if (teacherLink.endsWith('/teacher.html')) {
+                        studentLink = teacherLink.replace('/teacher.html', '/student.html');
+                    } else if (teacherLink.endsWith('/student.html')) {
+                        teacherLink = studentLink.replace('/student.html', '/teacher.html');
                     }
                 }
                 
@@ -451,7 +457,7 @@ function loadQuizzesBySubject(subject) {
                                 ${q.type === 'kahoot' ? '🎮 Kahoot' : '📝 Простая'}
                             </span>
                             ${userRole === 'teacher' ? `
-                                <button class="delete-btn" onclick="deleteQuiz('${key}')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #ff4444;">🗑️</button>
+                                <button class="delete-btn" onclick="deleteQuiz('${key}')" title="Удалить викторину">🗑️</button>
                             ` : ''}
                         </div>
                         <div class="quiz-class">${q.class} класс</div>
