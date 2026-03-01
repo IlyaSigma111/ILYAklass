@@ -168,8 +168,10 @@ function updateUI() {
         userSection.innerHTML = `
             <div class="user-card">
                 <img src="${currentUser.photoURL}" class="avatar">
-                <span style="font-weight: 500;">${userFullName || currentUser.displayName}</span>
-                <span class="role-badge">${userRole === 'teacher' ? 'Учитель' : 'Ученик'}</span>
+                <div style="display: flex; flex-direction: column;">
+                    <span style="font-weight: 600;">${userFullName || currentUser.displayName}</span>
+                    <span style="font-size: 12px; color: #4CAF50;">${userRole === 'teacher' ? 'Учитель' : 'Ученик'}</span>
+                </div>
                 <button onclick="signOut()" class="logout-btn">Выйти</button>
             </div>
         `;
@@ -672,7 +674,7 @@ async function joinQuiz(quizId, link, subject, title, maxScore) {
     }
 }
 
-// Загрузка сессий учителя
+// ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ С КНОПКОЙ ОЧИСТКИ =====
 function loadTeacherSessions() {
     db.ref(`teacherSessions/${currentUser.uid}`).on('value', (snapshot) => {
         const sessions = snapshot.val();
@@ -723,6 +725,18 @@ function loadTeacherSessions() {
                 </div>
             `;
         });
+        
+        // Добавляем кнопку очистки статистики
+        html += `
+            <div class="danger-zone">
+                <h3>⚠️ Опасная зона</h3>
+                <button class="clear-stats-btn" onclick="clearAllStats()">
+                    🗑️ ОЧИСТИТЬ ВСЮ СТАТИСТИКУ
+                </button>
+                <p>Это удалит все результаты всех учеников навсегда!</p>
+            </div>
+        `;
+        
         container.innerHTML = html;
     });
 }
@@ -796,6 +810,63 @@ async function saveScores(sessionId) {
     } catch (error) {
         console.error('Ошибка при сохранении:', error);
         alert('Ошибка при сохранении результатов');
+    }
+}
+
+// ===== НОВАЯ ФУНКЦИЯ ДЛЯ ОЧИСТКИ СТАТИСТИКИ =====
+async function clearAllStats() {
+    if (!confirm('⚠️ ВНИМАНИЕ! Вы уверены, что хотите удалить ВСЕ результаты? Это действие нельзя отменить!')) return;
+    
+    const password = prompt('Для подтверждения введите "УДАЛИТЬ ВСЁ" (капсом)');
+    if (password !== 'УДАЛИТЬ ВСЁ') {
+        alert('Отмена');
+        return;
+    }
+    
+    try {
+        // Показываем сообщение о начале очистки
+        const loadingMsg = document.createElement('div');
+        loadingMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 20px; border: 3px solid #f44336; z-index: 9999; box-shadow: 0 10px 40px rgba(0,0,0,0.3); text-align: center;';
+        loadingMsg.innerHTML = '<h3 style="color: #f44336; margin-bottom: 15px;">🧹 Очистка...</h3><p>Удаляем все результаты</p><div style="width: 100%; height: 4px; background: #f0f0f0; margin-top: 20px; border-radius: 2px;"><div id="progressBar" style="width: 0%; height: 100%; background: #f44336; border-radius: 2px; transition: width 0.3s;"></div></div>';
+        document.body.appendChild(loadingMsg);
+        
+        // Получаем все результаты
+        const resultsSnap = await db.ref('results').once('value');
+        const results = resultsSnap.val();
+        
+        if (!results) {
+            alert('Нет результатов для удаления');
+            document.body.removeChild(loadingMsg);
+            return;
+        }
+        
+        const total = Object.keys(results).length;
+        let count = 0;
+        
+        // Удаляем каждый результат
+        for (const key of Object.keys(results)) {
+            await db.ref('results/' + key).remove();
+            count++;
+            
+            // Обновляем прогресс
+            const progress = (count / total) * 100;
+            const progressBar = document.getElementById('progressBar');
+            if (progressBar) {
+                progressBar.style.width = progress + '%';
+            }
+            loadingMsg.innerHTML = `<h3 style="color: #f44336; margin-bottom: 15px;">🧹 Очистка...</h3><p>Удалено ${count} из ${total} результатов</p><div style="width: 100%; height: 4px; background: #f0f0f0; margin-top: 20px; border-radius: 2px;"><div style="width: ${progress}%; height: 100%; background: #f44336; border-radius: 2px; transition: width 0.3s;"></div></div>`;
+        }
+        
+        document.body.removeChild(loadingMsg);
+        
+        alert(`✅ Успешно удалено ${count} результатов!`);
+        
+        // Перезагружаем страницу
+        window.location.reload();
+        
+    } catch (error) {
+        console.error('Ошибка при очистке:', error);
+        alert('❌ Ошибка при очистке статистики: ' + error.message);
     }
 }
 
