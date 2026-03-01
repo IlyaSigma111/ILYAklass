@@ -10,6 +10,8 @@ const TELEGRAM_BOT_TOKEN = '8632118104:AAFn7dJ-Zd4c7Xki_8cZKjDIc0JjU8Ubt5E';
 const TELEGRAM_CHAT_ID = '1474901393';
 let lastUpdateId = 0;
 let pollingActive = true;
+let botStarted = false; // Флаг для защиты от спама
+let processedUpdates = new Set(); // Множество обработанных update_id
 
 // Email разработчика (твой)
 const DEVELOPER_EMAIL = 'ilyagulkov25@gmail.com';
@@ -92,7 +94,19 @@ async function getTelegramUpdates() {
         
         if (data.ok && data.result.length > 0) {
             for (const update of data.result) {
+                // Проверяем, не обрабатывали ли мы уже это обновление
+                if (processedUpdates.has(update.update_id)) {
+                    continue;
+                }
+                
                 lastUpdateId = update.update_id;
+                processedUpdates.add(update.update_id);
+                
+                // Ограничиваем размер множества (чтобы не раздувалось)
+                if (processedUpdates.size > 100) {
+                    const iterator = processedUpdates.values();
+                    processedUpdates.delete(iterator.next().value);
+                }
                 
                 if (update.message && update.message.text) {
                     const chatId = update.message.chat.id;
@@ -1086,14 +1100,17 @@ function loadTeacherSessions() {
             `;
         });
         
-        html += `
-            <div class="danger-zone">
-                <h3>⚠️ Опасная зона</h3>
-                <button class="clear-stats-btn" onclick="clearAllStats()">
-                    🗑️ ОЧИСТИТЬ ВСЁ
-                </button>
-            </div>
-        `;
+        // Опасная зона только для разработчика
+        if (userRole === 'developer') {
+            html += `
+                <div class="danger-zone">
+                    <h3>⚠️ Опасная зона</h3>
+                    <button class="clear-stats-btn" onclick="clearAllStats()">
+                        🗑️ ОЧИСТИТЬ ВСЁ
+                    </button>
+                </div>
+            `;
+        }
         
         container.innerHTML = html;
     });
@@ -1101,6 +1118,8 @@ function loadTeacherSessions() {
 
 function toggleSessionDetails(sessionId) {
     const details = document.getElementById(sessionId);
+    if (!details) return;
+    
     const card = details.closest('.session-card');
     const icon = card.querySelector('.toggle-icon');
     
@@ -1263,18 +1282,25 @@ function loadStudentResults() {
     });
 }
 
-// Запускаем Telegram бот
+// ===== ЗАПУСК TELEGRAM БОТА (ТОЛЬКО ОДИН РАЗ) =====
+let botInitialized = false;
+
 setTimeout(() => {
-    getTelegramUpdates();
-    sendTelegramMessage(`
+    if (!botInitialized) {
+        botInitialized = true;
+        getTelegramUpdates();
+        
+        // Отправляем приветствие только один раз
+        sendTelegramMessage(`
 🚀 <b>ИЛЬЯКЛАСС ЗАПУЩЕН!</b>
 
 Бот готов к работе.
 Напишите /help для списка команд.
-    `);
+        `);
+    }
 }, 3000);
 
-// Ежедневная статистика
+// Ежедневная статистика (проверяем каждый час, отправляем только в 20:00)
 setInterval(async () => {
     const now = new Date();
     if (now.getHours() === 20 && now.getMinutes() === 0) {
