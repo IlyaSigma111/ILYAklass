@@ -1,3 +1,19 @@
+// ===== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =====
+let currentUser = null;
+let userRole = null;
+let userFullName = null;
+let teacherSubjects = [];
+let selectedSubject = 'all';
+let quizType = 'kahoot';
+let allSubjects = [];
+
+// Базовый список предметов
+const baseSubjects = [
+    'Русский язык', 'Алгебра', 'Геометрия', 'Математика', 
+    'Химия', 'Физика', 'Литература', 'Английский язык', 
+    'История', 'Физкультура'
+];
+
 // ===== АВТОРИЗАЦИЯ =====
 auth.onAuthStateChanged(async (user) => {
     if (user) {
@@ -23,7 +39,7 @@ auth.onAuthStateChanged(async (user) => {
             
             // Загружаем сохраненный выбранный предмет из localStorage
             const savedSubject = localStorage.getItem('selectedSubject_' + currentUser.uid);
-            if (savedSubject && allSubjects.includes(savedSubject)) {
+            if (savedSubject && (savedSubject === 'all' || allSubjects.includes(savedSubject))) {
                 selectedSubject = savedSubject;
             } else {
                 selectedSubject = 'all';
@@ -188,14 +204,27 @@ function loadContent() {
         return;
     }
 
+    // Формируем список предметов для отображения
+    let subjectsToShow = [];
+    
+    if (userRole === 'teacher') {
+        // Для учителя показываем только его предметы
+        subjectsToShow = teacherSubjects.filter(s => allSubjects.includes(s));
+    } else {
+        // Для ученика показываем все предметы
+        subjectsToShow = [...allSubjects];
+    }
+
     content.innerHTML = `
         <div class="subjects-grid" id="subjectsGrid">
-            <div class="subject-card ${selectedSubject === 'all' ? 'selected' : ''}" onclick="selectSubject('all')">
-                <div class="subject-icon">📚</div>
-                <div class="subject-name">Все предметы</div>
-                <div class="subject-count" id="count-all">0 викторин</div>
-            </div>
-            ${allSubjects.map(s => `
+            ${userRole === 'student' ? `
+                <div class="subject-card ${selectedSubject === 'all' ? 'selected' : ''}" onclick="selectSubject('all')">
+                    <div class="subject-icon">📚</div>
+                    <div class="subject-name">Все предметы</div>
+                    <div class="subject-count" id="count-all">0 викторин</div>
+                </div>
+            ` : ''}
+            ${subjectsToShow.map(s => `
                 <div class="subject-card ${selectedSubject === s ? 'selected' : ''}" onclick="selectSubject('${s}')" id="subject-${s.replace(/\s/g, '')}">
                     <div class="subject-icon">📖</div>
                     <div class="subject-name">${s}</div>
@@ -259,8 +288,8 @@ function loadContent() {
 
                 <div class="form-group">
                     <label>Ссылка</label>
-                    <input type="url" id="quizLink" placeholder="https://example.com/quiz или /conditionals/teacher.html">
-                    <small style="color: #666; display: block; margin-top: 5px;">Можно вставить любую ссылку или путь к вашей викторине на GitHub</small>
+                    <input type="url" id="quizLink" placeholder="https://example.com/quiz">
+                    <small style="color: #666; display: block; margin-top: 5px;">Вставьте полную ссылку на викторину</small>
                 </div>
 
                 <div class="form-group" id="maxScoreGroup">
@@ -310,8 +339,10 @@ function selectSubject(subject) {
     
     // Подсвечиваем выбранный предмет
     document.querySelectorAll('.subject-card').forEach(el => el.classList.remove('selected'));
+    
     if (subject === 'all') {
-        document.querySelector('.subject-card').classList.add('selected');
+        const allSubjectEl = document.querySelector('.subject-card');
+        if (allSubjectEl) allSubjectEl.classList.add('selected');
     } else {
         const el = document.getElementById(`subject-${subject.replace(/\s/g, '')}`);
         if (el) el.classList.add('selected');
@@ -327,25 +358,31 @@ function loadAllQuizzes() {
         const quizzes = snapshot.val();
         if (!quizzes) return;
         
-        const counts = { all: 0 };
+        const counts = {};
         allSubjects.forEach(s => counts[s] = 0);
         
         Object.values(quizzes).forEach(q => {
-            counts.all++;
             if (counts.hasOwnProperty(q.subject)) {
                 counts[q.subject]++;
             }
         });
         
-        const countAllEl = document.getElementById('count-all');
-        if (countAllEl) countAllEl.textContent = `${counts.all} викторин`;
-        
+        // Обновляем счетчики для всех предметов
         allSubjects.forEach(s => {
             const countEl = document.getElementById(`count-${s.replace(/\s/g, '')}`);
             if (countEl) {
                 countEl.textContent = `${counts[s] || 0} викторин`;
             }
         });
+        
+        // Счетчик для "Все предметы" (только для учеников)
+        if (userRole === 'student') {
+            const countAllEl = document.getElementById('count-all');
+            if (countAllEl) {
+                const total = Object.values(quizzes).length;
+                countAllEl.textContent = `${total} викторин`;
+            }
+        }
         
         // После обновления счетчиков, загружаем викторины для выбранного предмета
         loadQuizzesBySubject(selectedSubject);
@@ -354,6 +391,8 @@ function loadAllQuizzes() {
 
 function loadQuizzesBySubject(subject) {
     let query = db.ref('quizzes');
+    
+    // Фильтруем по предмету если нужно
     if (subject !== 'all') {
         query = query.orderByChild('subject').equalTo(subject);
     }
@@ -371,9 +410,16 @@ function loadQuizzesBySubject(subject) {
         let html = '';
         const quizzesArray = Object.entries(quizzes);
         
-        // Фильтруем для учеников - только активные Kahoot
+        // Для учителя дополнительно фильтруем по его предметам
+        let filteredQuizzes = quizzesArray;
+        if (userRole === 'teacher' && teacherSubjects.length > 0 && subject === 'all') {
+            filteredQuizzes = quizzesArray.filter(([_, q]) => teacherSubjects.includes(q.subject));
+        }
+        
+        // Обрабатываем каждую викторину
         const processQuizzes = async () => {
-            for (const [key, q] of quizzesArray) {
+            for (const [key, q] of filteredQuizzes) {
+                // Для учеников проверяем активность Kahoot
                 if (userRole === 'student' && q.type === 'kahoot') {
                     const sessionsSnap = await db.ref('sessions').orderByChild('quizId').equalTo(key).once('value');
                     const sessions = sessionsSnap.val();
@@ -386,11 +432,28 @@ function loadQuizzesBySubject(subject) {
                     if (!isActive) continue;
                 }
                 
+                // Формируем правильные ссылки для Kahoot
+                let teacherLink = q.link;
+                let studentLink = q.link;
+                
+                if (q.type === 'kahoot' && q.link.includes('ilyasigma111.github.io')) {
+                    // Добавляем /teacher.html и /student.html если их нет
+                    if (!teacherLink.endsWith('/teacher.html') && !teacherLink.endsWith('/student.html')) {
+                        teacherLink = teacherLink.replace(/\/?$/, '') + '/teacher.html';
+                        studentLink = studentLink.replace(/\/?$/, '') + '/student.html';
+                    }
+                }
+                
                 html += `
                     <div class="quiz-card">
-                        <span class="quiz-badge ${q.type === 'kahoot' ? 'badge-kahoot' : 'badge-simple'}">
-                            ${q.type === 'kahoot' ? '🎮 Kahoot' : '📝 Простая'}
-                        </span>
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <span class="quiz-badge ${q.type === 'kahoot' ? 'badge-kahoot' : 'badge-simple'}">
+                                ${q.type === 'kahoot' ? '🎮 Kahoot' : '📝 Простая'}
+                            </span>
+                            ${userRole === 'teacher' ? `
+                                <button class="delete-btn" onclick="deleteQuiz('${key}')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #ff4444;">🗑️</button>
+                            ` : ''}
+                        </div>
                         <div class="quiz-class">${q.class} класс</div>
                         <div class="quiz-title">${q.title}</div>
                         <div class="quiz-subject">${q.subject}</div>
@@ -401,12 +464,12 @@ function loadQuizzesBySubject(subject) {
                         <div class="quiz-actions">
                             ${userRole === 'teacher' ? `
                                 ${q.type === 'kahoot' ? 
-                                    `<button class="btn btn-teacher" onclick="startQuiz('${key}', '${q.link}', '${q.subject}', '${q.title}', ${q.maxScore})">▶️ Запустить</button>` :
+                                    `<button class="btn btn-teacher" onclick="startQuiz('${key}', '${teacherLink}', '${q.subject}', '${q.title}', ${q.maxScore})">▶️ Запустить</button>` :
                                     `<a href="${q.link}" target="_blank" class="btn btn-external">🌐 Перейти</a>`
                                 }
                             ` : `
                                 ${q.type === 'kahoot' ? 
-                                    `<button class="btn btn-student" onclick="joinQuiz('${key}', '${q.link}', '${q.subject}', '${q.title}', ${q.maxScore})">🎮 Играть</button>` :
+                                    `<button class="btn btn-student" onclick="joinQuiz('${key}', '${studentLink}', '${q.subject}', '${q.title}', ${q.maxScore})">🎮 Играть</button>` :
                                     `<a href="${q.link}" target="_blank" class="btn btn-external">🌐 Перейти</a>`
                                 }
                             `}
@@ -420,6 +483,19 @@ function loadQuizzesBySubject(subject) {
         
         processQuizzes();
     });
+}
+
+// Удаление викторины
+async function deleteQuiz(quizId) {
+    if (!confirm('Вы уверены, что хотите удалить эту викторину?')) return;
+    
+    try {
+        await db.ref('quizzes/' + quizId).remove();
+        alert('Викторина удалена');
+    } catch (error) {
+        console.error('Ошибка при удалении:', error);
+        alert('Ошибка при удалении викторины');
+    }
 }
 
 function selectQuizType(type) {
@@ -441,12 +517,18 @@ async function saveQuiz() {
         const subject = document.getElementById('quizSubject').value;
         const title = document.getElementById('quizTitle').value;
         const description = document.getElementById('quizDescription').value;
-        const link = document.getElementById('quizLink').value;
+        let link = document.getElementById('quizLink').value;
         const maxScore = type === 'kahoot' ? parseInt(document.getElementById('quizMaxScore').value) : 0;
 
         if (!title || !link) {
             alert('Заполните название и ссылку');
             return;
+        }
+
+        // Для Kahoot проверяем и исправляем ссылку
+        if (type === 'kahoot' && link.includes('ilyasigma111.github.io')) {
+            // Убираем слеш в конце если есть
+            link = link.replace(/\/$/, '');
         }
 
         const quizData = {
