@@ -3,6 +3,9 @@ auth.onAuthStateChanged(async (user) => {
     if (user) {
         currentUser = user;
         
+        // Загружаем все предметы из БД
+        await loadAllSubjects();
+        
         const userRef = db.ref('users/' + user.uid);
         const snapshot = await userRef.once('value');
         const userData = snapshot.val();
@@ -13,8 +16,6 @@ auth.onAuthStateChanged(async (user) => {
             
             if (userRole === 'teacher' && userData.subjects) {
                 teacherSubjects = userData.subjects;
-            } else if (userRole === 'teacher') {
-                teacherSubjects = subjects.map(s => s.name);
             }
             
             document.getElementById('roleModal').style.display = 'none';
@@ -33,6 +34,58 @@ auth.onAuthStateChanged(async (user) => {
         loadContent();
     }
 });
+
+// Загрузка всех предметов из БД
+async function loadAllSubjects() {
+    const subjectsSnap = await db.ref('subjects').once('value');
+    const subjects = subjectsSnap.val();
+    if (subjects) {
+        allSubjects = Object.values(subjects);
+    } else {
+        allSubjects = [...baseSubjects];
+    }
+}
+
+// Добавление нового предмета
+async function addNewSubject() {
+    const newSubject = document.getElementById('newSubjectInput').value.trim();
+    if (!newSubject) {
+        alert('Введите название предмета');
+        return;
+    }
+    
+    // Проверяем, есть ли уже такой предмет
+    if (allSubjects.includes(newSubject)) {
+        alert('Такой предмет уже существует');
+        return;
+    }
+    
+    // Добавляем в БД
+    await db.ref('subjects').push(newSubject);
+    allSubjects.push(newSubject);
+    
+    // Обновляем список чекбоксов
+    renderSubjectCheckboxes();
+    
+    document.getElementById('newSubjectInput').value = '';
+}
+
+// Отрисовка чекбоксов предметов
+function renderSubjectCheckboxes() {
+    const container = document.getElementById('subjectsCheckboxList');
+    if (!container) return;
+    
+    let html = '';
+    allSubjects.forEach(subject => {
+        html += `
+            <label class="subject-checkbox">
+                <input type="checkbox" value="${subject}" ${teacherSubjects.includes(subject) ? 'checked' : ''}>
+                ${subject}
+            </label>
+        `;
+    });
+    container.innerHTML = html;
+}
 
 function signIn() {
     auth.signInWithPopup(provider);
@@ -54,17 +107,36 @@ async function selectRole(role) {
         registeredAt: Date.now()
     };
     
-    if (role === 'teacher') {
-        userData.subjects = subjects.map(s => s.name);
-    }
-    
     await db.ref('users/' + currentUser.uid).set(userData);
     
     document.getElementById('roleModal').style.display = 'none';
     userFullName = currentUser.displayName;
+    userRole = role;
+    
     if (role === 'teacher') {
-        teacherSubjects = subjects.map(s => s.name);
+        // Показываем окно выбора предметов
+        document.getElementById('subjectModal').style.display = 'flex';
+        renderSubjectCheckboxes();
+    } else {
+        window.location.reload();
     }
+}
+
+async function saveTeacherSubjects() {
+    const checkboxes = document.querySelectorAll('#subjectsCheckboxList input[type="checkbox"]:checked');
+    teacherSubjects = Array.from(checkboxes).map(cb => cb.value);
+    
+    await db.ref('users/' + currentUser.uid).update({
+        subjects: teacherSubjects
+    });
+    
+    document.getElementById('subjectModal').style.display = 'none';
+    window.location.reload();
+}
+
+function skipSubjectSelection() {
+    document.getElementById('subjectModal').style.display = 'none';
+    teacherSubjects = [...allSubjects];
     window.location.reload();
 }
 
@@ -110,80 +182,23 @@ function loadContent() {
 
     content.innerHTML = `
         <div class="subjects-grid" id="subjectsGrid">
-            ${subjects.map(s => `
-                <div class="subject-card" onclick="selectSubject('${s.name}')" id="subject-${s.name.replace(/\s/g, '')}">
-                    <div class="subject-icon">${s.icon}</div>
-                    <div class="subject-name">${s.name}</div>
-                    <div class="subject-count" id="count-${s.name.replace(/\s/g, '')}">0 викторин</div>
+            <div class="subject-card ${selectedSubject === 'all' ? 'selected' : ''}" onclick="selectSubject('all')">
+                <div class="subject-icon">📚</div>
+                <div class="subject-name">Все предметы</div>
+                <div class="subject-count" id="count-all">0 викторин</div>
+            </div>
+            ${allSubjects.map(s => `
+                <div class="subject-card" onclick="selectSubject('${s}')" id="subject-${s.replace(/\s/g, '')}">
+                    <div class="subject-icon">📖</div>
+                    <div class="subject-name">${s}</div>
+                    <div class="subject-count" id="count-${s.replace(/\s/g, '')}">0 викторин</div>
                 </div>
             `).join('')}
         </div>
 
-        <div class="quizzes-section" id="quizzesSection" style="display: none;">
+        <div class="quizzes-section" id="quizzesSection">
             <div class="section-header">
-                <h2 class="section-title" id="selectedSubjectTitle">Выберите предмет</h2>
-                ${userRole === 'teacher' ? `
-                    <button class="add-quiz-btn" onclick="toggleForm()">➕ Добавить викторину</button>
-                ` : ''}
-            </div>
-
-            <div id="quizForm" class="quiz-form">
-                <h3 style="color: #ffd700; margin-bottom: 30px; font-size: 28px;">Новая викторина</h3>
-                
-                <div class="form-group">
-                    <label>Тип викторины</label>
-                    <div class="radio-group" id="quizTypeGroup">
-                        <div class="radio-option selected" onclick="selectQuizType('kahoot')" id="type-kahoot">
-                            <input type="radio" name="quizType" value="kahoot" checked> 🎮 Kahoot (с учениками)
-                        </div>
-                        <div class="radio-option" onclick="selectQuizType('simple')" id="type-simple">
-                            <input type="radio" name="quizType" value="simple"> 📝 Простая ссылка (без учеников)
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Класс</label>
-                    <select id="quizClass">
-                        <option value="5">5 класс</option>
-                        <option value="6">6 класс</option>
-                        <option value="7">7 класс</option>
-                        <option value="8">8 класс</option>
-                        <option value="9">9 класс</option>
-                        <option value="10">10 класс</option>
-                        <option value="11">11 класс</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Предмет</label>
-                    <select id="quizSubject">
-                        ${subjects.map(s => `<option value="${s.name}">${s.icon} ${s.name}</option>`).join('')}
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Название викторины</label>
-                    <input type="text" id="quizTitle" placeholder="Например: Conditionals, Past Simple...">
-                </div>
-
-                <div class="form-group">
-                    <label>Описание (необязательно)</label>
-                    <textarea id="quizDescription" rows="3" placeholder="Краткое описание викторины..."></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label>Ссылка</label>
-                    <input type="url" id="quizLink" placeholder="https://example.com/quiz или /conditionals/teacher.html">
-                    <small style="color: #aaa; display: block; margin-top: 5px;">Можно вставить любую ссылку или путь к вашей викторине на GitHub</small>
-                </div>
-
-                <div class="form-group" id="maxScoreGroup">
-                    <label>Максимальный балл (для Kahoot)</label>
-                    <input type="number" id="quizMaxScore" placeholder="15" value="15">
-                </div>
-
-                <button class="submit-quiz" onclick="saveQuiz()">💾 Сохранить викторину</button>
+                <h2 class="section-title" id="selectedSubjectTitle">${selectedSubject === 'all' ? 'Все предметы' : selectedSubject}</h2>
             </div>
 
             <div id="quizzesList" class="quiz-grid"></div>
@@ -213,19 +228,15 @@ function loadContent() {
 function selectSubject(subject) {
     selectedSubject = subject;
     
-    subjects.forEach(s => {
-        const el = document.getElementById(`subject-${s.name.replace(/\s/g, '')}`);
-        if (el) {
-            if (s.name === subject) {
-                el.classList.add('selected');
-            } else {
-                el.classList.remove('selected');
-            }
-        }
-    });
+    // Подсвечиваем выбранный предмет
+    document.querySelectorAll('.subject-card').forEach(el => el.classList.remove('selected'));
+    if (subject === 'all') {
+        document.querySelector('.subject-card').classList.add('selected');
+    } else {
+        document.getElementById(`subject-${subject.replace(/\s/g, '')}`).classList.add('selected');
+    }
     
-    document.getElementById('quizzesSection').style.display = 'block';
-    document.getElementById('selectedSubjectTitle').innerHTML = `${subjects.find(s => s.name === subject).icon} ${subject}`;
+    document.getElementById('selectedSubjectTitle').innerHTML = subject === 'all' ? 'Все предметы' : subject;
     
     loadQuizzesBySubject(subject);
 }
@@ -235,150 +246,106 @@ function loadAllQuizzes() {
         const quizzes = snapshot.val();
         if (!quizzes) return;
         
-        const counts = {};
-        subjects.forEach(s => counts[s.name] = 0);
+        const counts = { all: 0 };
+        allSubjects.forEach(s => counts[s] = 0);
         
         Object.values(quizzes).forEach(q => {
+            counts.all++;
             if (counts.hasOwnProperty(q.subject)) {
                 counts[q.subject]++;
             }
         });
         
-        subjects.forEach(s => {
-            const countEl = document.getElementById(`count-${s.name.replace(/\s/g, '')}`);
+        document.getElementById('count-all').textContent = `${counts.all} викторин`;
+        allSubjects.forEach(s => {
+            const countEl = document.getElementById(`count-${s.replace(/\s/g, '')}`);
             if (countEl) {
-                countEl.textContent = `${counts[s.name]} викторин`;
+                countEl.textContent = `${counts[s]} викторин`;
             }
         });
         
-        if (selectedSubject) {
-            loadQuizzesBySubject(selectedSubject);
-        }
+        loadQuizzesBySubject(selectedSubject);
     });
 }
 
 function loadQuizzesBySubject(subject) {
-    db.ref('quizzes').orderByChild('subject').equalTo(subject).on('value', (snapshot) => {
+    let query = db.ref('quizzes');
+    if (subject !== 'all') {
+        query = query.orderByChild('subject').equalTo(subject);
+    }
+    
+    query.on('value', (snapshot) => {
         const quizzes = snapshot.val();
         const container = document.getElementById('quizzesList');
         if (!container) return;
         
         if (!quizzes) {
-            container.innerHTML = '<p style="text-align: center; color: #aaa; padding: 40px;">В этом предмете пока нет викторин</p>';
+            container.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">В этом разделе пока нет викторин</p>';
             return;
         }
 
         let html = '';
-        Object.keys(quizzes).forEach(key => {
-            const q = quizzes[key];
-            
+        const quizzesArray = subject === 'all' ? Object.entries(quizzes) : Object.entries(quizzes);
+        
+        // Фильтруем для учеников - только активные Kahoot
+        const promises = [];
+        
+        quizzesArray.forEach(([key, q]) => {
             if (userRole === 'student' && q.type === 'kahoot') {
-                db.ref('sessions').orderByChild('quizId').equalTo(key).once('value', (sessionsSnap) => {
-                    const sessions = sessionsSnap.val();
-                    let isActive = false;
-                    if (sessions) {
-                        Object.values(sessions).forEach(s => {
-                            if (s.status === 'active') isActive = true;
-                        });
-                    }
-                    if (!isActive) return;
-                });
+                const promise = db.ref('sessions').orderByChild('quizId').equalTo(key).once('value')
+                    .then(sessionsSnap => {
+                        const sessions = sessionsSnap.val();
+                        let isActive = false;
+                        if (sessions) {
+                            Object.values(sessions).forEach(s => {
+                                if (s.status === 'active') isActive = true;
+                            });
+                        }
+                        return isActive ? { key, q } : null;
+                    });
+                promises.push(promise);
+            } else {
+                promises.push(Promise.resolve({ key, q }));
             }
-            
-            html += `
-                <div class="quiz-card">
-                    <span class="quiz-badge ${q.type === 'kahoot' ? 'badge-kahoot' : 'badge-simple'}">
-                        ${q.type === 'kahoot' ? '🎮 Kahoot' : '📝 Простая'}
-                    </span>
-                    <div class="quiz-class">${q.class} класс</div>
-                    <div class="quiz-title">${q.title}</div>
-                    <div class="quiz-subject">${q.subject}</div>
-                    ${q.description ? `<p style="color: #aaa; margin-bottom: 15px;">${q.description}</p>` : ''}
-                    <div class="quiz-link">🔗 ${q.link}</div>
-                    ${q.type === 'kahoot' ? `<div style="color: #ffd700; margin: 10px 0;">Макс. балл: ${q.maxScore}</div>` : ''}
-                    
-                    <div class="quiz-actions">
-                        ${userRole === 'teacher' ? `
-                            ${q.type === 'kahoot' ? 
-                                `<button class="btn btn-teacher" onclick="startQuiz('${key}', '${q.link}', '${q.subject}', '${q.title}', ${q.maxScore})">▶️ Запустить</button>` :
-                                `<a href="${q.link}" target="_blank" class="btn btn-external">🌐 Перейти</a>`
-                            }
-                            <button class="btn btn-external" onclick="removeFromMain('${key}')">❌ Убрать</button>
-                        ` : `
-                            ${q.type === 'kahoot' ? 
-                                `<button class="btn btn-student" onclick="joinQuiz('${key}', '${q.link}', '${q.subject}', '${q.title}', ${q.maxScore})">🎮 Играть</button>` :
-                                `<a href="${q.link}" target="_blank" class="btn btn-external">🌐 Перейти</a>`
-                            }
-                        `}
-                    </div>
-                </div>
-            `;
         });
         
-        container.innerHTML = html || '<p style="text-align: center; color: #aaa; padding: 40px;">В этом предмете пока нет викторин</p>';
+        Promise.all(promises).then(results => {
+            results.forEach(item => {
+                if (!item) return;
+                const { key, q } = item;
+                
+                html += `
+                    <div class="quiz-card">
+                        <span class="quiz-badge ${q.type === 'kahoot' ? 'badge-kahoot' : 'badge-simple'}">
+                            ${q.type === 'kahoot' ? '🎮 Kahoot' : '📝 Простая'}
+                        </span>
+                        <div class="quiz-class">${q.class} класс</div>
+                        <div class="quiz-title">${q.title}</div>
+                        <div class="quiz-subject">${q.subject}</div>
+                        ${q.description ? `<p style="color: #666; margin-bottom: 15px;">${q.description}</p>` : ''}
+                        <div class="quiz-link">🔗 ${q.link}</div>
+                        ${q.type === 'kahoot' ? `<div style="color: #4CAF50; margin: 10px 0;">Макс. балл: ${q.maxScore}</div>` : ''}
+                        
+                        <div class="quiz-actions">
+                            ${userRole === 'teacher' ? `
+                                ${q.type === 'kahoot' ? 
+                                    `<button class="btn btn-teacher" onclick="startQuiz('${key}', '${q.link}', '${q.subject}', '${q.title}', ${q.maxScore})">▶️ Запустить</button>` :
+                                    `<a href="${q.link}" target="_blank" class="btn btn-external">🌐 Перейти</a>`
+                                }
+                            ` : `
+                                ${q.type === 'kahoot' ? 
+                                    `<button class="btn btn-student" onclick="joinQuiz('${key}', '${q.link}', '${q.subject}', '${q.title}', ${q.maxScore})">🎮 Играть</button>` :
+                                    `<a href="${q.link}" target="_blank" class="btn btn-external">🌐 Перейти</a>`
+                                }
+                            `}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html || '<p style="text-align: center; color: #666; padding: 40px;">В этом разделе пока нет викторин</p>';
+        });
     });
-}
-
-function selectQuizType(type) {
-    quizType = type;
-    document.getElementById('type-kahoot').classList.toggle('selected', type === 'kahoot');
-    document.getElementById('type-simple').classList.toggle('selected', type === 'simple');
-    document.getElementById('maxScoreGroup').style.display = type === 'kahoot' ? 'block' : 'none';
-}
-
-function toggleForm() {
-    document.getElementById('quizForm').classList.toggle('visible');
-}
-
-async function saveQuiz() {
-    try {
-        const type = quizType;
-        const quizClass = document.getElementById('quizClass').value;
-        const subject = document.getElementById('quizSubject').value;
-        const title = document.getElementById('quizTitle').value;
-        const description = document.getElementById('quizDescription').value;
-        const link = document.getElementById('quizLink').value;
-        const maxScore = type === 'kahoot' ? parseInt(document.getElementById('quizMaxScore').value) : 0;
-
-        if (!title || !link) {
-            alert('Заполните название и ссылку');
-            return;
-        }
-
-        const quizData = {
-            type: type,
-            class: quizClass,
-            subject: subject,
-            title: title,
-            description: description,
-            link: link,
-            createdBy: currentUser.uid,
-            createdAt: Date.now()
-        };
-
-        if (type === 'kahoot') {
-            quizData.maxScore = maxScore;
-        }
-
-        await db.ref('quizzes').push(quizData);
-        
-        document.getElementById('quizTitle').value = '';
-        document.getElementById('quizDescription').value = '';
-        document.getElementById('quizLink').value = '';
-        document.getElementById('quizMaxScore').value = '15';
-        
-        document.getElementById('quizForm').classList.remove('visible');
-        
-    } catch (error) {
-        console.error('Ошибка при сохранении:', error);
-        alert('Ошибка при сохранении викторины');
-    }
-}
-
-async function removeFromMain(quizId) {
-    if (confirm('Убрать викторину с главной?')) {
-        await db.ref('quizzes/' + quizId).remove();
-    }
 }
 
 // Учитель запускает Kahoot викторину
@@ -469,10 +436,18 @@ async function joinQuiz(quizId, link, subject, title, maxScore) {
             email: currentUser.email
         });
         
-        let url = new URL(link);
-        url.searchParams.append('session', activeSessionId);
-        url.searchParams.append('student', currentUser.uid);
-        url.searchParams.append('name', studentName);
+        // Добавляем параметры к ссылке
+        let url;
+        try {
+            url = new URL(link);
+            url.searchParams.append('session', activeSessionId);
+            url.searchParams.append('student', currentUser.uid);
+            url.searchParams.append('name', studentName);
+        } catch (e) {
+            // Если ссылка относительная
+            url = link + (link.includes('?') ? '&' : '?') + 
+                  `session=${activeSessionId}&student=${currentUser.uid}&name=${encodeURIComponent(studentName)}`;
+        }
         
         window.open(url.toString(), '_blank');
         
@@ -490,7 +465,7 @@ function loadTeacherSessions() {
         if (!container) return;
         
         if (!sessions) {
-            container.innerHTML = '<p style="color: #aaa; text-align: center;">Нет проведенных викторин</p>';
+            container.innerHTML = '<p style="color: #666; text-align: center;">Нет проведенных викторин</p>';
             return;
         }
 
@@ -507,8 +482,8 @@ function loadTeacherSessions() {
                 <div class="session-card">
                     <div class="session-header">
                         <div>
-                            <strong style="color: #ffd700; font-size: 20px;">${s.quizSubject} - ${s.quizTitle}</strong>
-                            <div style="color: #aaa; margin-top: 5px;">${date}</div>
+                            <strong style="color: #4CAF50; font-size: 20px;">${s.quizSubject} - ${s.quizTitle}</strong>
+                            <div style="color: #666; margin-top: 5px;">${date}</div>
                         </div>
                         <span class="session-status ${s.status === 'active' ? 'status-active' : 'status-finished'}">
                             ${s.status === 'active' ? '🟢 Активна' : '🔵 Завершена'}
@@ -539,7 +514,7 @@ function loadTeacherSessions() {
 
 function renderStudents(students, maxScore, sessionId, status) {
     if (!students || Object.keys(students).length === 0) {
-        return '<p style="color: #aaa;">Пока нет учеников</p>';
+        return '<p style="color: #666;">Пока нет учеников</p>';
     }
     
     let html = '';
@@ -552,7 +527,7 @@ function renderStudents(students, maxScore, sessionId, status) {
                     `<input type="number" class="score-input" id="score-${sessionId}-${id}" 
                             max="${maxScore || 100}" min="0" 
                             placeholder="0-${maxScore || 100}">` :
-                    '<span style="color: #10b981;">✓ Присоединился</span>'
+                    '<span style="color: #4CAF50;">✓ Присоединился</span>'
                 }
             </div>
         `;
@@ -617,7 +592,7 @@ function loadStudentResults() {
         if (!container) return;
         
         if (!results) {
-            container.innerHTML = '<p style="color: #aaa; text-align: center;">У вас пока нет результатов</p>';
+            container.innerHTML = '<p style="color: #666; text-align: center;">У вас пока нет результатов</p>';
             return;
         }
 
@@ -633,8 +608,8 @@ function loadStudentResults() {
             html += `
                 <div class="student-item">
                     <div>
-                        <strong style="color: #ffd700;">${r.quizSubject} - ${r.quizTitle}</strong>
-                        <div style="color: #aaa; font-size: 14px;">${date}</div>
+                        <strong style="color: #4CAF50;">${r.quizSubject} - ${r.quizTitle}</strong>
+                        <div style="color: #666; font-size: 14px;">${date}</div>
                     </div>
                     <span class="score-badge">${r.score || 0}/${r.maxScore || 0}</span>
                 </div>
