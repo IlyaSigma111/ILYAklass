@@ -24,28 +24,190 @@
         </div>
         <div id="userSection"></div>
     </header>
+
     <main class="main-container">
-        <div class="login-container">
-            <div class="login-card">
-                <h2 style="color: #ffd700; font-size: 36px;">👤 Профиль</h2>
-                <p style="margin: 30px 0; color: #aaa;">Здесь будут настройки профиля</p>
-                <button class="login-btn" onclick="window.location='index.html'">На главную</button>
-            </div>
-        </div>
+        <div id="content" class="loading">Загрузка профиля...</div>
     </main>
+
     <script src="firebase.js"></script>
     <script>
-        auth.onAuthStateChanged((user) => {
+        // Загрузка всех предметов
+        let allSubjects = [];
+        let teacherSubjects = [];
+        
+        async function loadAllSubjects() {
+            const subjectsSnap = await db.ref('subjects').once('value');
+            const subjects = subjectsSnap.val();
+            if (subjects) {
+                allSubjects = Object.values(subjects);
+            } else {
+                allSubjects = ['Русский язык', 'Алгебра', 'Геометрия', 'Математика', 'Химия', 'Физика', 'Литература', 'Английский язык', 'История', 'Физкультура'];
+            }
+        }
+        
+        auth.onAuthStateChanged(async (user) => {
             if (user) {
+                await loadAllSubjects();
+                
+                const userRef = db.ref('users/' + user.uid);
+                const snapshot = await userRef.once('value');
+                const userData = snapshot.val();
+                
                 document.getElementById('userSection').innerHTML = `
                     <div class="user-card">
                         <img src="${user.photoURL}" class="avatar">
-                        <span>${user.displayName}</span>
+                        <span>${userData?.fullName || user.displayName}</span>
+                        <span class="role-badge">${userData?.role === 'teacher' ? 'Учитель' : 'Ученик'}</span>
                         <button onclick="auth.signOut()" class="logout-btn">Выйти</button>
                     </div>
                 `;
+                
+                if (userData?.role === 'teacher') {
+                    teacherSubjects = userData.subjects || [];
+                }
+                
+                loadProfile(user, userData);
+            } else {
+                window.location.href = 'index.html';
             }
         });
+        
+        function loadProfile(user, userData) {
+            const content = document.getElementById('content');
+            
+            content.innerHTML = `
+                <div class="profile-container">
+                    <!-- Левая колонка - аватар и основная информация -->
+                    <div class="profile-sidebar">
+                        <img src="${user.photoURL}" class="profile-avatar">
+                        <div class="profile-name">${userData?.fullName || user.displayName}</div>
+                        <div class="profile-email">${user.email}</div>
+                        <div class="profile-role">${userData?.role === 'teacher' ? 'Учитель' : 'Ученик'}</div>
+                        
+                        ${userData?.role === 'teacher' ? `
+                            <div style="margin-top: 30px;">
+                                <h3 style="color: #4CAF50; margin-bottom: 15px;">➕ Управление</h3>
+                                <button class="add-quiz-btn" onclick="window.location.href='index.html#addQuiz'" style="width: 100%;">➕ Добавить викторину</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <!-- Правая колонка - настройки -->
+                    <div class="profile-main">
+                        <h2 class="settings-title">⚙️ Настройки профиля</h2>
+                        
+                        <div class="settings-section">
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Фамилия и Имя</div>
+                                    <div class="setting-description">Как вас видят другие пользователи</div>
+                                </div>
+                                <input type="text" id="fullNameInput" class="setting-input" value="${userData?.fullName || user.displayName}" placeholder="Иванов Иван">
+                            </div>
+                            
+                            <button class="submit-quiz" onclick="saveFullName()" style="margin-top: 20px;">💾 Сохранить имя</button>
+                        </div>
+                        
+                        <div class="settings-section">
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Режим "Все предметы"</div>
+                                    <div class="setting-description">Показывать все предметы на главной</div>
+                                </div>
+                                <label class="subject-checkbox">
+                                    <input type="checkbox" id="showAllSubjects" ${localStorage.getItem('showAllSubjects') === 'true' ? 'checked' : ''} onchange="toggleAllSubjects()">
+                                    Включить
+                                </label>
+                            </div>
+                        </div>
+                        
+                        ${userData?.role === 'teacher' ? `
+                            <div class="settings-section">
+                                <h3 style="color: #4CAF50; margin-bottom: 20px;">📚 Мои предметы</h3>
+                                <div id="subjectsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;"></div>
+                                
+                                <div style="display: flex; gap: 15px; margin-bottom: 30px;">
+                                    <input type="text" id="newSubjectInput" placeholder="Новый предмет" class="setting-input" style="flex: 1;">
+                                    <button onclick="addNewSubject()" class="add-quiz-btn">➕ Добавить</button>
+                                </div>
+                                
+                                <button class="submit-quiz" onclick="saveTeacherSubjects()">💾 Сохранить предметы</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            
+            if (userData?.role === 'teacher') {
+                renderSubjectCheckboxes();
+            }
+        }
+        
+        function renderSubjectCheckboxes() {
+            const container = document.getElementById('subjectsList');
+            if (!container) return;
+            
+            let html = '';
+            allSubjects.forEach(subject => {
+                html += `
+                    <label class="subject-checkbox">
+                        <input type="checkbox" value="${subject}" ${teacherSubjects.includes(subject) ? 'checked' : ''}>
+                        ${subject}
+                    </label>
+                `;
+            });
+            container.innerHTML = html;
+        }
+        
+        async function addNewSubject() {
+            const newSubject = document.getElementById('newSubjectInput').value.trim();
+            if (!newSubject) {
+                alert('Введите название предмета');
+                return;
+            }
+            
+            if (allSubjects.includes(newSubject)) {
+                alert('Такой предмет уже существует');
+                return;
+            }
+            
+            await db.ref('subjects').push(newSubject);
+            allSubjects.push(newSubject);
+            renderSubjectCheckboxes();
+            document.getElementById('newSubjectInput').value = '';
+        }
+        
+        async function saveFullName() {
+            const newName = document.getElementById('fullNameInput').value;
+            if (!newName) {
+                alert('Введите имя');
+                return;
+            }
+            
+            await db.ref('users/' + currentUser.uid).update({
+                fullName: newName
+            });
+            
+            alert('Имя сохранено!');
+            window.location.reload();
+        }
+        
+        async function saveTeacherSubjects() {
+            const checkboxes = document.querySelectorAll('#subjectsList input[type="checkbox"]:checked');
+            const subjects = Array.from(checkboxes).map(cb => cb.value);
+            
+            await db.ref('users/' + currentUser.uid).update({
+                subjects: subjects
+            });
+            
+            alert('Предметы сохранены!');
+        }
+        
+        function toggleAllSubjects() {
+            const checked = document.getElementById('showAllSubjects').checked;
+            localStorage.setItem('showAllSubjects', checked);
+            alert('Настройка сохранена. Обновите страницу.');
+        }
     </script>
 </body>
 </html>
