@@ -1,4 +1,4 @@
-/* ===== ДИЗАЙН В СТИЛЕ ЯКЛАСС (ЗЕЛЕНЫЙ) ===== */
+/* ===== ДИЗАЙН В СТИЛЕ ЯКЛАСС (ЗЕЛЕНЫЙ) С ТЕМНОЙ ТЕМОЙ ===== */
 * {
     margin: 0;
     padding: 0;
@@ -6,27 +6,28 @@
     font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
 }
 
-body {
+/* Светлая тема (по умолчанию) */
+body.light-theme {
     background: linear-gradient(145deg, #1a3b2e 0%, #2a5a45 100%);
-    min-height: 100vh;
     color: #333;
-    position: relative;
-    overflow-x: hidden;
 }
 
-/* Шапка */
-.header {
+/* Темная тема */
+body.dark-theme {
+    background: linear-gradient(145deg, #0a1a1a 0%, #1a2f2a 100%);
+    color: #e0e0e0;
+}
+
+/* Шапка - адаптация под тему */
+body.light-theme .header {
     background: white;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    padding: 15px 30px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 15px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+}
+
+body.dark-theme .header {
+    background: #1a2a2a;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border-bottom: 2px solid #4CAF50;
 }
 
 .logo {
@@ -44,41 +45,35 @@ body {
     color: #2196F3;
 }
 
-.nav-menu {
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-}
-
-.nav-link {
+/* Навигация - адаптация под тему */
+body.light-theme .nav-link {
     color: #333;
-    text-decoration: none;
-    padding: 8px 20px;
-    border-radius: 40px;
     background: #f5f5f5;
-    transition: all 0.3s;
-    font-weight: 500;
 }
 
-.nav-link:hover {
+body.dark-theme .nav-link {
+    color: #e0e0e0;
+    background: #2a3a3a;
+}
+
+body.dark-theme .nav-link:hover {
     background: #4CAF50;
     color: white;
 }
 
-.nav-link.active {
+body.dark-theme .nav-link.active {
     background: #4CAF50;
     color: white;
-    font-weight: 700;
 }
 
-/* Пользовательская карточка */
-.user-card {
-    display: flex;
-    align-items: center;
-    gap: 15px;
+/* Пользовательская карточка - адаптация под тему */
+body.light-theme .user-card {
     background: #f5f5f5;
-    padding: 5px 15px 5px 5px;
-    border-radius: 50px;
+}
+
+body.dark-theme .user-card {
+    background: #2a3a3a;
+    color: #e0e0e0;
 }
 
 .avatar {
@@ -120,6 +115,23 @@ body {
     padding: 30px;
 }
 
+/* Кнопка переключения темы */
+.theme-toggle {
+    background: transparent;
+    border: 2px solid #4CAF50;
+    color: #4CAF50;
+    padding: 8px 15px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-left: 15px;
+}
+
+body.dark-theme .theme-toggle {
+    color: #ffd700;
+    border-color: #ffd700;
+}
+
 /* ===== КНОПКА ВХОДА ===== */
 .login-container {
     display: flex;
@@ -128,13 +140,15 @@ body {
     min-height: 80vh;
 }
 
-.login-card {
+body.light-theme .login-card {
     background: white;
-    border-radius: 30px;
-    padding: 60px;
-    text-align: center;
-    max-width: 600px;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+body.dark-theme .login-card {
+    background: #1a2a2a;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    border: 2px solid #4CAF50;
 }
 
 .login-title {
@@ -142,10 +156,8 @@ body {
     margin-bottom: 20px;
 }
 
-.login-subtitle {
-    color: #666;
-    margin-bottom: 40px;
-    font-size: 20px;
+body.dark-theme .login-subtitle {
+    color: #aaa;
 }
 
 .login-big-btn {
@@ -164,7 +176,6 @@ body {
 .login-big-btn:hover {
     background: #45a049;
     transform: scale(1.05);
-    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
 }
 
 /* ===== МОДАЛЬНОЕ ОКНО ===== */
@@ -182,15 +193,15 @@ body {
     padding: 20px;
 }
 
-.role-modal {
+body.light-theme .role-modal {
     background: white;
-    padding: 40px;
-    border-radius: 30px;
-    max-width: 800px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-theme .role-modal {
+    background: #1a2a2a;
+    border: 2px solid #4CAF50;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
 }
 
 .role-modal h2 {
@@ -219,6 +230,12 @@ body {
     text-align: center;
 }
 
+body.dark-theme .role-option {
+    background: #2a3a3a;
+    border-color: #4CAF50;
+    color: #e0e0e0;
+}
+
 .role-option:hover {
     border-color: #4CAF50;
     transform: scale(1.05);
@@ -235,11 +252,6 @@ body {
     font-size: 28px;
 }
 
-.warning-text {
-    color: #ff4444;
-    font-size: 14px;
-}
-
 /* ===== ПРЕДМЕТНАЯ СЕТКА ===== */
 .subjects-grid {
     display: grid;
@@ -248,15 +260,24 @@ body {
     margin: 30px 0;
 }
 
-.subject-card {
+body.light-theme .subject-card {
     background: white;
     border: 2px solid #e0e0e0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+body.dark-theme .subject-card {
+    background: #1a2a2a;
+    border: 2px solid #4CAF50;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.subject-card {
     border-radius: 20px;
     padding: 30px 20px;
     cursor: pointer;
     transition: all 0.3s;
     text-align: center;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
 .subject-card:hover {
@@ -268,7 +289,10 @@ body {
 .subject-card.selected {
     border-color: #4CAF50;
     background: #e8f5e9;
-    box-shadow: 0 0 30px rgba(76, 175, 80, 0.3);
+}
+
+body.dark-theme .subject-card.selected {
+    background: #2a4a3a;
 }
 
 .subject-icon {
@@ -283,9 +307,8 @@ body {
     margin-bottom: 10px;
 }
 
-.subject-count {
-    color: #666;
-    font-size: 16px;
+body.dark-theme .subject-count {
+    color: #aaa;
 }
 
 /* ===== КАРТОЧКИ ВИКТОРИН ===== */
@@ -323,7 +346,6 @@ body {
 .add-quiz-btn:hover {
     background: #45a049;
     transform: scale(1.05);
-    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
 }
 
 .quiz-grid {
@@ -332,13 +354,22 @@ body {
     gap: 25px;
 }
 
-.quiz-card {
+body.light-theme .quiz-card {
     background: white;
+    border: 2px solid #e0e0e0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+body.dark-theme .quiz-card {
+    background: #1a2a2a;
+    border: 2px solid #4CAF50;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.quiz-card {
     border-radius: 20px;
     padding: 25px;
     transition: all 0.3s;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-    border: 2px solid #e0e0e0;
 }
 
 .quiz-card:hover {
@@ -392,11 +423,19 @@ body {
     margin-bottom: 15px;
 }
 
-.quiz-link {
+body.light-theme .quiz-link {
     background: #f5f5f5;
+    color: #666;
+}
+
+body.dark-theme .quiz-link {
+    background: #2a3a3a;
+    color: #aaa;
+}
+
+.quiz-link {
     padding: 10px;
     border-radius: 10px;
-    color: #666;
     font-size: 14px;
     word-break: break-all;
     margin: 15px 0;
@@ -441,14 +480,23 @@ body {
 }
 
 /* ===== ФОРМА СОЗДАНИЯ ===== */
-.quiz-form {
+body.light-theme .quiz-form {
     background: white;
+    border: 3px solid #4CAF50;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+body.dark-theme .quiz-form {
+    background: #1a2a2a;
+    border: 3px solid #4CAF50;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.quiz-form {
     padding: 40px;
     border-radius: 30px;
     margin-bottom: 40px;
-    border: 3px solid #4CAF50;
     display: none;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
 .quiz-form.visible {
@@ -467,15 +515,28 @@ body {
     font-weight: 600;
 }
 
+body.light-theme .form-group input,
+body.light-theme .form-group select,
+body.light-theme .form-group textarea {
+    background: white;
+    border: 2px solid #e0e0e0;
+    color: #333;
+}
+
+body.dark-theme .form-group input,
+body.dark-theme .form-group select,
+body.dark-theme .form-group textarea {
+    background: #2a3a3a;
+    border: 2px solid #4CAF50;
+    color: #e0e0e0;
+}
+
 .form-group input,
 .form-group select,
 .form-group textarea {
     width: 100%;
     padding: 15px 20px;
     border-radius: 30px;
-    border: 2px solid #e0e0e0;
-    background: white;
-    color: #333;
     font-size: 16px;
 }
 
@@ -491,20 +552,33 @@ body {
     flex-wrap: wrap;
 }
 
+body.light-theme .radio-option {
+    background: #f5f5f5;
+    border: 2px solid #e0e0e0;
+}
+
+body.dark-theme .radio-option {
+    background: #2a3a3a;
+    border: 2px solid #4CAF50;
+    color: #e0e0e0;
+}
+
 .radio-option {
     display: flex;
     align-items: center;
     gap: 10px;
-    background: #f5f5f5;
     padding: 15px 25px;
     border-radius: 40px;
-    border: 2px solid #e0e0e0;
     cursor: pointer;
 }
 
 .radio-option.selected {
     border-color: #4CAF50;
     background: #e8f5e9;
+}
+
+body.dark-theme .radio-option.selected {
+    background: #2a4a3a;
 }
 
 .radio-option input[type="radio"] {
@@ -534,15 +608,31 @@ body {
 .my-quizzes-section {
     margin-top: 50px;
     padding: 30px;
-    background: white;
     border-radius: 30px;
     border: 2px solid #4CAF50;
+}
+
+body.light-theme .my-quizzes-section {
+    background: white;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
-.session-card {
+body.dark-theme .my-quizzes-section {
+    background: #1a2a2a;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+body.light-theme .session-card {
     background: #f9f9f9;
     border: 2px solid #e0e0e0;
+}
+
+body.dark-theme .session-card {
+    background: #2a3a3a;
+    border: 2px solid #4CAF50;
+}
+
+.session-card {
     border-radius: 20px;
     padding: 25px;
     margin-bottom: 20px;
@@ -576,8 +666,15 @@ body {
     border: 2px solid #2196F3;
 }
 
-.students-list {
+body.light-theme .students-list {
     background: white;
+}
+
+body.dark-theme .students-list {
+    background: #1a2a2a;
+}
+
+.students-list {
     border-radius: 15px;
     padding: 20px;
     margin: 20px 0;
@@ -593,6 +690,10 @@ body {
     gap: 15px;
 }
 
+body.dark-theme .student-item {
+    border-bottom-color: #4CAF50;
+}
+
 .student-item:last-child {
     border-bottom: none;
 }
@@ -605,6 +706,11 @@ body {
     background: white;
     color: #333;
     text-align: center;
+}
+
+body.dark-theme .score-input {
+    background: #2a3a3a;
+    color: #e0e0e0;
 }
 
 .finish-quiz-btn,
@@ -634,14 +740,24 @@ body {
     font-weight: 700;
 }
 
+body.light-theme .loading {
+    background: white;
+    color: #4CAF50;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+body.dark-theme .loading {
+    background: #1a2a2a;
+    color: #4CAF50;
+    border: 2px solid #4CAF50;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
 .loading {
     text-align: center;
     padding: 60px;
-    color: #4CAF50;
     font-size: 24px;
-    background: white;
     border-radius: 30px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
 /* ===== ПРОФИЛЬ ===== */
@@ -651,20 +767,29 @@ body {
     gap: 30px;
 }
 
-.profile-sidebar {
+body.light-theme .profile-sidebar,
+body.light-theme .profile-main {
     background: white;
+    border: 2px solid #4CAF50;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+body.dark-theme .profile-sidebar,
+body.dark-theme .profile-main {
+    background: #1a2a2a;
+    border: 2px solid #4CAF50;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.profile-sidebar {
     border-radius: 30px;
     padding: 30px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-    border: 2px solid #4CAF50;
+    text-align: center;
 }
 
 .profile-main {
-    background: white;
     border-radius: 30px;
     padding: 30px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-    border: 2px solid #4CAF50;
 }
 
 .profile-avatar {
@@ -681,9 +806,8 @@ body {
     margin-bottom: 10px;
 }
 
-.profile-email {
-    color: #666;
-    margin-bottom: 20px;
+body.dark-theme .profile-email {
+    color: #aaa;
 }
 
 .profile-role {
@@ -699,6 +823,10 @@ body {
     margin-bottom: 30px;
     padding-bottom: 30px;
     border-bottom: 2px solid #e0e0e0;
+}
+
+body.dark-theme .settings-section {
+    border-bottom-color: #4CAF50;
 }
 
 .settings-title {
@@ -717,19 +845,28 @@ body {
     gap: 15px;
 }
 
+body.dark-theme .setting-item {
+    border-bottom-color: #4CAF50;
+}
+
 .setting-item:last-child {
     border-bottom: none;
 }
 
 .setting-label {
     font-weight: 600;
+}
+
+body.light-theme .setting-label {
     color: #333;
 }
 
-.setting-description {
-    color: #666;
-    font-size: 14px;
-    margin-top: 5px;
+body.dark-theme .setting-label {
+    color: #e0e0e0;
+}
+
+body.dark-theme .setting-description {
+    color: #aaa;
 }
 
 .setting-input {
@@ -737,6 +874,12 @@ body {
     border-radius: 30px;
     border: 2px solid #e0e0e0;
     width: 250px;
+}
+
+body.dark-theme .setting-input {
+    background: #2a3a3a;
+    border-color: #4CAF50;
+    color: #e0e0e0;
 }
 
 .setting-input:focus {
@@ -752,6 +895,11 @@ body {
     background: #f5f5f5;
     border-radius: 30px;
     cursor: pointer;
+}
+
+body.dark-theme .subject-checkbox {
+    background: #2a3a3a;
+    color: #e0e0e0;
 }
 
 .subject-checkbox input[type="checkbox"] {
@@ -817,4 +965,21 @@ body {
     .setting-input {
         width: 100%;
     }
+}
+
+/* Кнопка темы в шапке */
+.theme-btn {
+    background: transparent;
+    border: 2px solid #4CAF50;
+    color: #4CAF50;
+    padding: 8px 15px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-left: 15px;
+}
+
+body.dark-theme .theme-btn {
+    color: #ffd700;
+    border-color: #ffd700;
 }
