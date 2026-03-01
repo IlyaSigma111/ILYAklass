@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ИЛЬЯКЛАСС - Главная</title>
+    <title>ИЛЬЯКЛАСС</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -11,7 +11,7 @@
 </head>
 <body>
     <header class="header">
-        <div style="display: flex; align-items: center; width: 100%; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 30px;">
             <div class="logo" onclick="window.location='index.html'">
                 <span class="logo-il">ИЛЬ</span>
                 <span class="logo-yaclass">ЯКЛАСС</span>
@@ -21,46 +21,142 @@
                 <a href="results.html" class="nav-link">Результаты</a>
                 <a href="profile.html" class="nav-link">Профиль</a>
             </nav>
-            <div id="userSection"></div>
         </div>
+        <div id="userSection"></div>
     </header>
 
     <main class="main-container">
-        <div id="content"></div>
+        <div id="content" class="loading">Загрузка...</div>
     </main>
 
     <!-- Модальное окно выбора роли -->
-    <div id="roleModal" class="modal-overlay">
+    <div id="roleModal" class="modal-overlay" style="display: none;">
         <div class="role-modal">
-            <h2>Добро пожаловать в ИЛЬЯКЛАСС!</h2>
-            <p style="color: #aaa; margin-bottom: 2rem;">Выберите роль — это решение нельзя будет изменить</p>
-            
+            <h2>Добро пожаловать!</h2>
+            <p style="color: #aaa; margin: 20px 0;">Выберите роль — это навсегда</p>
             <div class="role-options">
                 <div class="role-option teacher" onclick="selectRole('teacher')">
                     <div class="role-icon">👨‍🏫</div>
                     <h3>Учитель</h3>
-                    <p style="color: #aaa; margin-top: 1rem;">Создавать и проводить викторины</p>
                 </div>
                 <div class="role-option student" onclick="selectRole('student')">
                     <div class="role-icon">👨‍🎓</div>
                     <h3>Ученик</h3>
-                    <p style="color: #aaa; margin-top: 1rem;">Проходить викторины и получать оценки</p>
                 </div>
             </div>
-            
-            <p class="warning-text">⚠️ Внимание: после подтверждения роль изменить нельзя</p>
+            <p class="warning-text">⚠️ После выбора роль нельзя изменить</p>
         </div>
     </div>
 
-    <script src="firebase.js"></script>
     <script>
-        let currentQuizSessions = {};
+        // Твой Firebase конфиг
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-FGoB1L-euPEfGZvTN0pyfyLGZY4zGyE",
+            authDomain: "ilyaklass-b11c0.firebaseapp.com",
+            projectId: "ilyaklass-b11c0",
+            storageBucket: "ilyaklass-b11c0.firebasestorage.app",
+            messagingSenderId: "803990572684",
+            appId: "1:803990572684:web:f10f6399a2c0c035e5b5a9",
+            databaseURL: "https://ilyaklass-b11c0-default-rtdb.firebaseio.com/"
+        };
 
-        function loadPageContent() {
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+        const provider = new firebase.auth.GoogleAuthProvider();
+
+        let currentUser = null;
+        let userRole = null;
+        let userFullName = null;
+
+        // Проверка авторизации
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUser = user;
+                const userRef = db.ref('users/' + user.uid);
+                const snapshot = await userRef.once('value');
+                const userData = snapshot.val();
+                
+                if (userData && userData.role) {
+                    userRole = userData.role;
+                    userFullName = userData.fullName;
+                    document.getElementById('roleModal').style.display = 'none';
+                    updateUI();
+                    loadContent();
+                } else {
+                    document.getElementById('roleModal').style.display = 'flex';
+                    updateUI();
+                }
+            } else {
+                currentUser = null;
+                userRole = null;
+                userFullName = null;
+                updateUI();
+                loadContent();
+            }
+        });
+
+        // Вход
+        function signIn() {
+            auth.signInWithPopup(provider);
+        }
+
+        // Выход
+        function signOut() {
+            auth.signOut();
+        }
+
+        // Выбор роли
+        async function selectRole(role) {
+            if (!currentUser) return;
+            
+            await db.ref('users/' + currentUser.uid).set({
+                email: currentUser.email,
+                googleName: currentUser.displayName,
+                avatar: currentUser.photoURL,
+                role: role,
+                fullName: '',
+                registeredAt: Date.now()
+            });
+            
+            document.getElementById('roleModal').style.display = 'none';
+            askFullName();
+        }
+
+        // Запрос ФИО
+        function askFullName() {
+            const name = prompt('Введите вашу фамилию и имя:');
+            if (name) {
+                db.ref('users/' + currentUser.uid).update({ fullName: name });
+                userFullName = name;
+                window.location.reload();
+            }
+        }
+
+        // Обновление интерфейса
+        function updateUI() {
+            const userSection = document.getElementById('userSection');
+            if (!userSection) return;
+            
+            if (currentUser) {
+                userSection.innerHTML = `
+                    <div class="user-card">
+                        <img src="${currentUser.photoURL}" class="avatar">
+                        <span>${userFullName || currentUser.displayName}</span>
+                        <span class="role-badge">${userRole === 'teacher' ? 'Учитель' : 'Ученик'}</span>
+                        <button onclick="signOut()" class="logout-btn">Выйти</button>
+                    </div>
+                `;
+            } else {
+                userSection.innerHTML = '';
+            }
+        }
+
+        // Загрузка контента
+        function loadContent() {
             const content = document.getElementById('content');
             
             if (!currentUser) {
-                // КРАСИВАЯ ЦЕНТРАЛЬНАЯ КНОПКА
                 content.innerHTML = `
                     <div class="login-container">
                         <div class="login-card">
@@ -80,10 +176,10 @@
 
             if (userRole === 'teacher') {
                 content.innerHTML = `
-                    <button class="add-quiz-btn" onclick="toggleQuizForm()">➕ Создать новую викторину</button>
+                    <button class="add-quiz-btn" onclick="toggleForm()">➕ Создать викторину</button>
                     
                     <div id="quizForm" class="quiz-form">
-                        <h3 style="color:#ffd700; margin-bottom:1.5rem;">Новая викторина</h3>
+                        <h3 style="color: gold; margin-bottom: 20px;">Новая викторина</h3>
                         <div class="form-group">
                             <label>Класс</label>
                             <select id="quizClass">
@@ -98,35 +194,35 @@
                         </div>
                         <div class="form-group">
                             <label>Предмет</label>
-                            <input type="text" id="quizSubject" placeholder="Например: Английский язык">
+                            <input type="text" id="quizSubject" placeholder="Английский язык">
                         </div>
                         <div class="form-group">
                             <label>Тема</label>
-                            <input type="text" id="quizTopic" placeholder="Например: Conditionals">
+                            <input type="text" id="quizTopic" placeholder="Conditionals">
                         </div>
                         <div class="form-group">
-                            <label>Название папки (после /)</label>
-                            <input type="text" id="quizFolder" placeholder="Например: conditionals">
+                            <label>Название папки</label>
+                            <input type="text" id="quizFolder" placeholder="conditionals">
                         </div>
                         <div class="form-group">
-                            <label>Максимальный балл</label>
-                            <input type="number" id="quizMaxScore" placeholder="Например: 15">
+                            <label>Макс. балл</label>
+                            <input type="number" id="quizMaxScore" placeholder="15">
                         </div>
-                        <button class="submit-quiz" onclick="saveQuiz()">Создать викторину</button>
+                        <button class="submit-quiz" onclick="saveQuiz()">Создать</button>
                     </div>
 
-                    <h2 style="color: white; margin: 2rem 0 1rem;">📚 Все викторины</h2>
-                    <div id="quizzesList" class="quiz-grid"></div>
+                    <h2 style="margin: 30px 0 20px;">📚 Все викторины</h2>
+                    <div id="quizzesList" class="quiz-grid">Загрузка...</div>
 
-                    <div id="myQuizzesSection" class="my-quizzes-section">
-                        <h2 class="section-title">📋 Мои проведенные викторины</h2>
+                    <div class="my-quizzes-section">
+                        <h2 class="section-title">📋 Мои викторины</h2>
                         <div id="myQuizzesList"></div>
                     </div>
                 `;
             } else {
                 content.innerHTML = `
-                    <h2 style="color: white; margin: 2rem 0 1rem;">📚 Доступные викторины</h2>
-                    <div id="quizzesList" class="quiz-grid"></div>
+                    <h2 style="margin: 30px 0 20px;">📚 Доступные викторины</h2>
+                    <div id="quizzesList" class="quiz-grid">Загрузка...</div>
                     
                     <div class="my-quizzes-section">
                         <h2 class="section-title">📊 Мои результаты</h2>
@@ -143,52 +239,46 @@
             }
         }
 
+        // Загрузка викторин
         function loadQuizzes() {
             db.ref('quizzes').on('value', (snapshot) => {
                 const quizzes = snapshot.val();
-                renderQuizzes(quizzes);
-            });
-        }
+                const container = document.getElementById('quizzesList');
+                if (!container) return;
+                
+                if (!quizzes) {
+                    container.innerHTML = '<p>Пока нет викторин</p>';
+                    return;
+                }
 
-        function renderQuizzes(quizzes) {
-            const container = document.getElementById('quizzesList');
-            if (!container) return;
-            
-            if (!quizzes) {
-                container.innerHTML = '<p style="text-align:center; color:#aaa;">Пока нет викторин</p>';
-                return;
-            }
-
-            let html = '';
-            
-            Object.keys(quizzes).forEach(key => {
-                const q = quizzes[key];
-                html += `
-                    <div class="quiz-card">
-                        <div class="quiz-class">${q.class} класс</div>
-                        <div class="quiz-title">${q.subject}</div>
-                        <div class="quiz-subject">${q.topic}</div>
-                        <div style="margin: 1rem 0; color:#ffd700;">Макс. балл: ${q.maxScore}</div>
-                        <div class="quiz-actions">
-                            ${userRole === 'teacher' ? 
-                                `<button class="btn btn-teacher" onclick="startQuiz('${key}', '${q.folder}', '${q.subject}', '${q.topic}', ${q.maxScore})">🎮 Запустить викторину</button>` : 
-                                `<button class="btn btn-student" onclick="joinQuiz('${key}', '${q.folder}', '${q.subject}', '${q.topic}', ${q.maxScore})">👨‍🎓 Присоединиться</button>`
-                            }
+                let html = '';
+                Object.keys(quizzes).forEach(key => {
+                    const q = quizzes[key];
+                    html += `
+                        <div class="quiz-card">
+                            <div class="quiz-class">${q.class} класс</div>
+                            <div class="quiz-title">${q.subject}</div>
+                            <div style="margin-bottom: 10px;">${q.topic}</div>
+                            <div style="color: gold; margin-bottom: 15px;">Макс: ${q.maxScore}</div>
+                            <div class="quiz-actions">
+                                ${userRole === 'teacher' ? 
+                                    `<button class="btn btn-teacher" onclick="startQuiz('${key}', '${q.folder}', '${q.subject}', '${q.topic}', ${q.maxScore})">Запустить</button>` : 
+                                    `<button class="btn btn-student" onclick="joinQuiz('${key}', '${q.folder}', '${q.subject}', '${q.topic}', ${q.maxScore})">Играть</button>`
+                                }
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                });
+                container.innerHTML = html;
             });
-
-            container.innerHTML = html;
         }
 
-        // УЧИТЕЛЬ: запускает викторину
+        // Учитель запускает викторину
         async function startQuiz(quizId, folder, subject, topic, maxScore) {
-            // Создаем сессию в Firebase
             const sessionRef = db.ref('sessions').push();
             const sessionId = sessionRef.key;
             
-            const sessionData = {
+            await sessionRef.set({
                 quizId: quizId,
                 quizFolder: folder,
                 quizSubject: subject,
@@ -197,60 +287,53 @@
                 teacherId: currentUser.uid,
                 teacherName: userFullName,
                 status: 'active',
-                startedAt: firebase.database.ServerValue.TIMESTAMP,
-                students: {} // Здесь будут ученики
-            };
+                startedAt: Date.now(),
+                students: {}
+            });
             
-            await sessionRef.set(sessionData);
+            await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).set({
+                quizSubject: subject,
+                quizTopic: topic,
+                maxScore: maxScore,
+                status: 'active',
+                startedAt: Date.now(),
+                students: {}
+            });
             
-            // Сохраняем в "Мои викторины" учителя
-            await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).set(sessionData);
-            
-            // Открываем панель учителя
             window.open(`https://ilyasigma111.github.io/${folder}/teacher.html?session=${sessionId}`, '_blank');
-            
-            // Перезагружаем список моих викторин
             loadTeacherSessions();
         }
 
-        // УЧЕНИК: присоединяется к викторине
+        // Ученик присоединяется
         async function joinQuiz(quizId, folder, subject, topic, maxScore) {
             if (!userFullName) {
-                alert('Сначала заполните фамилию и имя в профиле');
-                window.location.href = 'profile.html';
+                askFullName();
                 return;
             }
             
-            // Ищем активную сессию этой викторины
-            const sessionsSnapshot = await db.ref('sessions')
-                .orderByChild('quizId')
-                .equalTo(quizId)
-                .once('value');
-            
-            const sessions = sessionsSnapshot.val();
+            const sessions = await db.ref('sessions').orderByChild('quizId').equalTo(quizId).once('value');
             let activeSession = null;
             
-            if (sessions) {
-                Object.keys(sessions).forEach(key => {
-                    if (sessions[key].status === 'active') {
-                        activeSession = { id: key, ...sessions[key] };
-                    }
-                });
-            }
+            sessions.forEach(s => {
+                if (s.val().status === 'active') activeSession = { id: s.key, ...s.val() };
+            });
             
             if (!activeSession) {
-                alert('Сейчас нет активной викторины. Дождитесь, пока учитель запустит игру.');
+                alert('Нет активной викторины');
                 return;
             }
             
-            // Добавляем ученика в сессию
             await db.ref(`sessions/${activeSession.id}/students/${currentUser.uid}`).set({
                 name: userFullName,
                 email: currentUser.email,
-                joinedAt: firebase.database.ServerValue.TIMESTAMP
+                joinedAt: Date.now()
             });
             
-            // Открываем страницу ученика
+            await db.ref(`teacherSessions/${activeSession.teacherId}/${activeSession.id}/students/${currentUser.uid}`).set({
+                name: userFullName,
+                email: currentUser.email
+            });
+            
             window.open(`https://ilyasigma111.github.io/${folder}/student.html?session=${activeSession.id}&student=${currentUser.uid}&name=${encodeURIComponent(userFullName)}`, '_blank');
         }
 
@@ -259,202 +342,158 @@
             db.ref(`teacherSessions/${currentUser.uid}`).on('value', (snapshot) => {
                 const sessions = snapshot.val();
                 const container = document.getElementById('myQuizzesList');
-                
                 if (!container) return;
                 
                 if (!sessions) {
-                    container.innerHTML = '<p style="color:#aaa;">Вы еще не проводили викторин</p>';
+                    container.innerHTML = '<p>Нет проведенных викторин</p>';
                     return;
                 }
-                
+
                 let html = '';
-                
-                // Сортируем по дате (сначала новые)
-                const sortedSessions = Object.keys(sessions).sort((a, b) => {
-                    return sessions[b].startedAt - sessions[a].startedAt;
-                });
-                
-                sortedSessions.forEach(sessionId => {
-                    const s = sessions[sessionId];
+                Object.keys(sessions).sort((a,b) => sessions[b].startedAt - sessions[a].startedAt).forEach(id => {
+                    const s = sessions[id];
                     const date = new Date(s.startedAt).toLocaleString();
                     
                     html += `
-                        <div class="session-card" id="session-${sessionId}">
+                        <div class="session-card">
                             <div class="session-header">
                                 <div>
-                                    <strong style="color: #ffd700;">${s.quizSubject} - ${s.quizTopic}</strong>
-                                    <div style="color: #aaa; font-size: 0.9rem;">${date}</div>
+                                    <strong style="color: gold;">${s.quizSubject} - ${s.quizTopic}</strong>
+                                    <div style="color: #aaa;">${date}</div>
                                 </div>
                                 <span class="session-status ${s.status === 'active' ? 'status-active' : 'status-finished'}">
-                                    ${s.status === 'active' ? '🟢 Активна' : '🔵 Завершена'}
+                                    ${s.status === 'active' ? 'Активна' : 'Завершена'}
                                 </span>
                             </div>
                             
-                            <div id="students-${sessionId}" class="students-list">
-                                ${renderStudentsList(s.students, s.maxScore, sessionId, s.status)}
+                            <div class="students-list" id="students-${id}">
+                                ${renderStudents(s.students, s.maxScore, id, s.status)}
                             </div>
                             
                             ${s.status === 'active' ? `
-                                <button class="finish-quiz-btn" onclick="finishQuiz('${sessionId}')">
-                                    🏁 Викторина завершена
+                                <button class="finish-quiz-btn" onclick="finishQuiz('${id}')">
+                                    Завершить викторину
                                 </button>
                             ` : ''}
                             
                             ${s.status === 'finished' ? `
-                                <button class="save-scores-btn" onclick="saveScores('${sessionId}')">
-                                    💾 Сохранить результаты
+                                <button class="save-scores-btn" onclick="saveScores('${id}')">
+                                    Сохранить результаты
                                 </button>
                             ` : ''}
                         </div>
                     `;
                 });
-                
                 container.innerHTML = html;
             });
         }
 
-        function renderStudentsList(students, maxScore, sessionId, status) {
-            if (!students) {
-                return '<p style="color:#aaa;">Пока никто не присоединился</p>';
-            }
+        function renderStudents(students, maxScore, sessionId, status) {
+            if (!students) return '<p>Пока нет учеников</p>';
             
             let html = '';
-            
-            Object.keys(students).forEach(studentId => {
-                const s = students[studentId];
+            Object.keys(students).forEach(id => {
                 html += `
                     <div class="student-item">
-                        <span>${s.name}</span>
+                        <span>${students[id].name}</span>
                         ${status === 'finished' ? 
-                            `<input type="number" class="score-input" id="score-${sessionId}-${studentId}" 
-                                    placeholder="0-${maxScore}" max="${maxScore}" min="0">` :
-                            `<span style="color:#10b981;">✓ Присоединился</span>`
+                            `<input type="number" class="score-input" id="score-${sessionId}-${id}" max="${maxScore}" min="0" placeholder="0-${maxScore}">` :
+                            '<span style="color: #10b981;">✓ Присоединился</span>'
                         }
                     </div>
                 `;
             });
-            
             return html;
         }
 
         async function finishQuiz(sessionId) {
-            await db.ref(`sessions/${sessionId}`).update({
-                status: 'finished'
-            });
-            
-            await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).update({
-                status: 'finished'
-            });
+            await db.ref(`sessions/${sessionId}`).update({ status: 'finished' });
+            await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).update({ status: 'finished' });
         }
 
         async function saveScores(sessionId) {
-            const sessionRef = await db.ref(`sessions/${sessionId}`).once('value');
-            const session = sessionRef.val();
+            const session = await db.ref(`sessions/${sessionId}`).once('value');
+            const s = session.val();
             
-            if (!session) return;
+            if (!s || !s.students) return;
             
-            const students = session.students;
-            if (!students) return;
-            
-            let savedCount = 0;
-            
-            for (const studentId of Object.keys(students)) {
-                const scoreInput = document.getElementById(`score-${sessionId}-${studentId}`);
-                if (!scoreInput) continue;
+            let count = 0;
+            for (const studentId of Object.keys(s.students)) {
+                const input = document.getElementById(`score-${sessionId}-${studentId}`);
+                if (!input) continue;
                 
-                const score = parseInt(scoreInput.value);
+                const score = parseInt(input.value);
                 if (isNaN(score)) continue;
                 
-                // Сохраняем результат
                 await db.ref('results').push({
                     studentId: studentId,
-                    studentName: students[studentId].name,
-                    quizId: session.quizId,
-                    quizSubject: session.quizSubject,
-                    quizTopic: session.quizTopic,
-                    class: session.quizClass,
+                    studentName: s.students[studentId].name,
+                    quizSubject: s.quizSubject,
+                    quizTopic: s.quizTopic,
                     score: score,
-                    maxScore: session.maxScore,
+                    maxScore: s.maxScore,
                     teacherId: currentUser.uid,
-                    teacherName: userFullName,
-                    date: firebase.database.ServerValue.TIMESTAMP
+                    date: Date.now()
                 });
-                
-                savedCount++;
+                count++;
             }
             
-            alert(`Сохранено ${savedCount} результатов!`);
-            
-            // Обновляем статус в учительской сессии
-            await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).update({
-                resultsSaved: true
-            });
+            alert(`Сохранено ${count} результатов!`);
         }
 
-        // Загрузка результатов ученика
+        // Результаты ученика
         function loadStudentResults() {
             db.ref('results').orderByChild('studentId').equalTo(currentUser.uid).on('value', (snapshot) => {
                 const results = snapshot.val();
                 const container = document.getElementById('myResults');
-                
                 if (!container) return;
                 
                 if (!results) {
-                    container.innerHTML = '<p style="color:#aaa;">У вас пока нет результатов</p>';
+                    container.innerHTML = '<p>Пока нет результатов</p>';
                     return;
                 }
-                
+
                 let html = '<div class="students-list">';
-                
-                Object.keys(results).sort((a, b) => results[b].date - results[a].date).forEach(key => {
+                Object.keys(results).sort((a,b) => results[b].date - results[a].date).forEach(key => {
                     const r = results[key];
-                    const date = new Date(r.date).toLocaleDateString();
-                    
                     html += `
                         <div class="student-item">
                             <div>
                                 <strong>${r.quizSubject} - ${r.quizTopic}</strong>
-                                <div style="color: #aaa; font-size: 0.9rem;">${date}</div>
+                                <div style="color: #aaa;">${new Date(r.date).toLocaleDateString()}</div>
                             </div>
                             <span class="score-badge">${r.score}/${r.maxScore}</span>
                         </div>
                     `;
                 });
-                
                 html += '</div>';
                 container.innerHTML = html;
             });
         }
 
-        function toggleQuizForm() {
+        function toggleForm() {
             document.getElementById('quizForm').classList.toggle('visible');
         }
 
         async function saveQuiz() {
-            const quizClass = document.getElementById('quizClass').value;
-            const subject = document.getElementById('quizSubject').value;
-            const topic = document.getElementById('quizTopic').value;
-            const folder = document.getElementById('quizFolder').value;
-            const maxScore = document.getElementById('quizMaxScore').value;
+            const data = {
+                class: document.getElementById('quizClass').value,
+                subject: document.getElementById('quizSubject').value,
+                topic: document.getElementById('quizTopic').value,
+                folder: document.getElementById('quizFolder').value,
+                maxScore: parseInt(document.getElementById('quizMaxScore').value),
+                teacherLink: `https://ilyasigma111.github.io/${document.getElementById('quizFolder').value}/teacher.html`,
+                studentLink: `https://ilyasigma111.github.io/${document.getElementById('quizFolder').value}/student.html`,
+                createdBy: currentUser.uid,
+                createdAt: Date.now()
+            };
 
-            if (!subject || !topic || !folder || !maxScore) {
+            if (!data.subject || !data.topic || !data.folder || !data.maxScore) {
                 alert('Заполните все поля');
                 return;
             }
 
-            const quizData = {
-                class: quizClass,
-                subject: subject,
-                topic: topic,
-                folder: folder,
-                maxScore: parseInt(maxScore),
-                teacherLink: `https://ilyasigma111.github.io/${folder}/teacher.html`,
-                studentLink: `https://ilyasigma111.github.io/${folder}/student.html`,
-                createdBy: currentUser.uid,
-                createdAt: firebase.database.ServerValue.TIMESTAMP
-            };
-
-            await db.ref('quizzes').push(quizData);
+            await db.ref('quizzes').push(data);
             document.getElementById('quizForm').classList.remove('visible');
             
             document.getElementById('quizSubject').value = '';
