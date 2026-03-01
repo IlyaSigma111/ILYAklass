@@ -11,6 +11,57 @@ const TELEGRAM_CHAT_ID = '1474901393';
 let lastUpdateId = 0;
 let pollingActive = true;
 
+// Email разработчика (твой)
+const DEVELOPER_EMAIL = 'ilyagulkov25@gmail.com';
+
+// ===== ФУНКЦИИ ДЛЯ РАБОТЫ С ИМЕНАМИ =====
+function cleanDisplayName(name) {
+    if (!name) return name;
+    // Убираем скобки с числом для отображения
+    return name.replace(/\s*\(\d+\)$/, '');
+}
+
+function getBaseName(name) {
+    if (!name) return name;
+    // Получаем имя без скобок для проверки уникальности
+    return name.replace(/\s*\(\d+\)$/, '').trim();
+}
+
+function checkIfModerator(name) {
+    if (!name) return false;
+    // Проверяем, есть ли скобки с числом в конце
+    return /\s*\(\d+\)$/.test(name);
+}
+
+async function isNameTaken(baseName, excludeUid = null) {
+    const usersSnap = await db.ref('users').once('value');
+    const users = usersSnap.val() || {};
+    
+    for (const uid in users) {
+        if (excludeUid && uid === excludeUid) continue;
+        
+        const user = users[uid];
+        const userBaseName = getBaseName(user.fullName || user.googleName);
+        
+        if (userBaseName.toLowerCase() === baseName.toLowerCase()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+async function getUniqueName(baseName) {
+    let uniqueName = baseName;
+    let counter = 1;
+    
+    while (await isNameTaken(getBaseName(uniqueName))) {
+        uniqueName = `${baseName}(${counter})`;
+        counter++;
+    }
+    
+    return uniqueName;
+}
+
 // ===== TELEGRAM ФУНКЦИИ =====
 async function sendTelegramMessage(text, chatId = TELEGRAM_CHAT_ID) {
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
@@ -47,7 +98,6 @@ async function getTelegramUpdates() {
                     const chatId = update.message.chat.id;
                     const text = update.message.text.trim();
                     
-                    // Проверяем что сообщение от нужного чата или разрешаем всем
                     await handleTelegramCommand(text, chatId);
                 }
             }
@@ -74,6 +124,7 @@ async function handleTelegramCommand(command, chatId) {
 /stats - Полная статистика
 /teachers - Список учителей
 /students - Список учеников
+/moderators - Список модераторов
 /quizzes - Все викторины
 /results - Все результаты
 /top - Топ учеников
@@ -89,6 +140,7 @@ async function handleTelegramCommand(command, chatId) {
 /stats - общая статистика по платформе
 /teachers - список всех учителей
 /students - список всех учеников
+/moderators - список модераторов
 /quizzes - количество и список викторин
 /results - статистика по результатам
 /top - топ учеников по баллам
@@ -106,6 +158,10 @@ async function handleTelegramCommand(command, chatId) {
             
         case '/students':
             response = await getStudentsList();
+            break;
+            
+        case '/moderators':
+            response = await getModeratorsList();
             break;
             
         case '/quizzes':
@@ -128,7 +184,7 @@ async function handleTelegramCommand(command, chatId) {
             if (command.startsWith('/')) {
                 response = '❌ Неизвестная команда. Напишите /help';
             } else {
-                return; // Игнорируем не-команды
+                return;
             }
     }
     
@@ -151,17 +207,27 @@ async function getFullStats() {
         const sessions = sessionsSnap.val() || {};
         const quizzes = quizzesSnap.val() || {};
         
-        let teachers = 0, students = 0;
+        let developers = 0, moderators = 0, teachers = 0, students = 0;
+        const developersList = [];
+        const moderatorsList = [];
         const teachersList = [];
         const studentsList = [];
         
         Object.entries(users).forEach(([id, u]) => {
-            if (u.role === 'teacher') {
+            const displayName = cleanDisplayName(u.fullName || u.googleName);
+            
+            if (u.role === 'developer') {
+                developers++;
+                developersList.push(`👑 ${displayName}`);
+            } else if (u.isModerator) {
+                moderators++;
+                moderatorsList.push(`🛡️ ${displayName}`);
+            } else if (u.role === 'teacher') {
                 teachers++;
-                teachersList.push(`👨‍🏫 ${u.fullName || u.googleName}`);
+                teachersList.push(`👨‍🏫 ${displayName}`);
             } else if (u.role === 'student') {
                 students++;
-                studentsList.push(`👨‍🎓 ${u.fullName || u.googleName}`);
+                studentsList.push(`👨‍🎓 ${displayName}`);
             }
         });
         
@@ -178,9 +244,11 @@ async function getFullStats() {
 📊 <b>ПОЛНАЯ СТАТИСТИКА ИЛЬЯКЛАСС</b>
 
 👥 <b>Пользователи:</b>
+• Разработчиков: ${developers}
+• Модераторов: ${moderators}
 • Учителей: ${teachers}
 • Учеников: ${students}
-• Всего: ${teachers + students}
+• Всего: ${developers + moderators + teachers + students}
 
 📚 <b>Викторины:</b>
 • Всего создано: ${totalQuizzes}
@@ -191,6 +259,12 @@ async function getFullStats() {
 • Всего результатов: ${totalResults}
 • Средний балл: ${avgScore}
 • Сумма баллов: ${totalScore}
+
+👑 <b>Разработчики (${developers}):</b>
+${developersList.join('\n') || '• Нет'}
+
+🛡️ <b>Модераторы (${moderators}):</b>
+${moderatorsList.join('\n') || '• Нет'}
 
 👨‍🏫 <b>Учителя (${teachers}):</b>
 ${teachersList.slice(0, 5).join('\n')}${teachersList.length > 5 ? `\n... и еще ${teachersList.length - 5}` : ''}
@@ -206,14 +280,30 @@ ${studentsList.slice(0, 5).join('\n')}${studentsList.length > 5 ? `\n... и ещ
     }
 }
 
+async function getModeratorsList() {
+    const usersSnap = await db.ref('users').once('value');
+    const users = usersSnap.val() || {};
+    
+    let moderators = [];
+    Object.values(users).forEach(u => {
+        if (u.isModerator) {
+            moderators.push(`🛡️ ${cleanDisplayName(u.fullName || u.googleName)}`);
+        }
+    });
+    
+    return moderators.length > 0 
+        ? `🛡️ <b>Список модераторов (${moderators.length}):</b>\n\n${moderators.join('\n')}`
+        : '🛡️ Модераторов пока нет';
+}
+
 async function getTeachersList() {
     const usersSnap = await db.ref('users').once('value');
     const users = usersSnap.val() || {};
     
     let teachers = [];
     Object.values(users).forEach(u => {
-        if (u.role === 'teacher') {
-            teachers.push(`• ${u.fullName || u.googleName}`);
+        if (u.role === 'teacher' && !u.isModerator) {
+            teachers.push(`• ${cleanDisplayName(u.fullName || u.googleName)}`);
         }
     });
     
@@ -228,8 +318,8 @@ async function getStudentsList() {
     
     let students = [];
     Object.values(users).forEach(u => {
-        if (u.role === 'student') {
-            students.push(`• ${u.fullName || u.googleName}`);
+        if (u.role === 'student' && !u.isModerator) {
+            students.push(`• ${cleanDisplayName(u.fullName || u.googleName)}`);
         }
     });
     
@@ -301,7 +391,7 @@ async function getTopStudents() {
     });
     
     let top = Object.entries(studentScores)
-        .map(([name, data]) => ({ name, avg: data.total / data.count, total: data.total }))
+        .map(([name, data]) => ({ name: cleanDisplayName(name), avg: data.total / data.count, total: data.total }))
         .sort((a, b) => b.total - a.total)
         .slice(0, 10)
         .map((s, i) => `${i+1}. ${s.name} — ${s.total} баллов (ср. ${s.avg.toFixed(1)})`)
@@ -334,11 +424,32 @@ auth.onAuthStateChanged(async (user) => {
         
         const userRef = db.ref('users/' + user.uid);
         const snapshot = await userRef.once('value');
-        const userData = snapshot.val();
+        let userData = snapshot.val();
         
         if (userData && userData.role) {
             userRole = userData.role;
             userFullName = userData.fullName || user.displayName;
+            
+            // Проверяем, разработчик ли это
+            const isDeveloper = user.email === DEVELOPER_EMAIL;
+            
+            if (isDeveloper) {
+                userRole = 'developer';
+                userIsModerator = false;
+                await db.ref('users/' + currentUser.uid).update({
+                    role: 'developer',
+                    isModerator: false
+                });
+            } else {
+                // Проверяем, модератор ли это (по наличию скобок в имени)
+                userIsModerator = userData.isModerator || checkIfModerator(user.displayName);
+                
+                if (userIsModerator && !userData.isModerator) {
+                    await db.ref('users/' + currentUser.uid).update({
+                        isModerator: true
+                    });
+                }
+            }
             
             if (userRole === 'teacher' && userData.subjects) {
                 teacherSubjects = userData.subjects;
@@ -365,6 +476,7 @@ auth.onAuthStateChanged(async (user) => {
         currentUser = null;
         userRole = null;
         userFullName = null;
+        userIsModerator = false;
         teacherSubjects = [];
         updateUI();
         loadContent();
@@ -392,22 +504,36 @@ function signOut() {
 async function selectRole(role) {
     if (!currentUser) return;
     
+    // Проверяем уникальность имени
+    const baseName = getBaseName(currentUser.displayName);
+    const isTaken = await isNameTaken(baseName);
+    
+    let finalName = currentUser.displayName;
+    if (isTaken) {
+        finalName = await getUniqueName(baseName);
+    }
+    
+    const isDeveloper = currentUser.email === DEVELOPER_EMAIL;
+    const isModerator = !isDeveloper && checkIfModerator(finalName);
+    
     const userData = {
         email: currentUser.email,
         googleName: currentUser.displayName,
         avatar: currentUser.photoURL,
-        role: role,
-        fullName: currentUser.displayName,
+        role: isDeveloper ? 'developer' : role,
+        fullName: finalName,
+        isModerator: isModerator,
         registeredAt: Date.now()
     };
     
     await db.ref('users/' + currentUser.uid).set(userData);
     
     document.getElementById('roleModal').style.display = 'none';
-    userFullName = currentUser.displayName;
-    userRole = role;
+    userFullName = finalName;
+    userRole = isDeveloper ? 'developer' : role;
+    userIsModerator = isModerator;
     
-    if (role === 'teacher') {
+    if (role === 'teacher' && !isDeveloper) {
         document.getElementById('subjectModal').style.display = 'flex';
         renderSubjectCheckboxes();
     } else {
@@ -438,12 +564,26 @@ function updateUI() {
     if (!userSection) return;
     
     if (currentUser) {
+        const displayName = cleanDisplayName(userFullName || currentUser.displayName);
+        let roleText = '';
+        let roleClass = '';
+        
+        if (userRole === 'developer') {
+            roleText = '👑 Разработчик';
+            roleClass = 'developer';
+        } else if (userIsModerator) {
+            roleText = '🛡️ Модератор';
+            roleClass = 'moderator';
+        } else {
+            roleText = userRole === 'teacher' ? '👨‍🏫 Учитель' : '👨‍🎓 Ученик';
+        }
+        
         userSection.innerHTML = `
             <div class="user-card">
                 <img src="${currentUser.photoURL}" class="avatar">
                 <div class="user-info">
-                    <span class="user-name">${userFullName || currentUser.displayName}</span>
-                    <span class="user-role">${userRole === 'teacher' ? 'Учитель' : 'Ученик'}</span>
+                    <span class="user-name">${displayName}</span>
+                    <span class="user-role ${roleClass}">${roleText}</span>
                 </div>
                 <button onclick="signOut()" class="logout-btn">Выйти</button>
             </div>
@@ -504,13 +644,13 @@ function loadContent() {
         <div class="quizzes-section" id="quizzesSection">
             <div class="section-header">
                 <h2 class="section-title" id="selectedSubjectTitle">${selectedSubject === 'all' ? 'Все предметы' : selectedSubject}</h2>
-                ${userRole === 'teacher' ? `
+                ${userRole === 'teacher' || userRole === 'developer' || userIsModerator ? `
                     <button class="add-quiz-btn" onclick="toggleForm()">➕ Добавить викторину</button>
                 ` : ''}
             </div>
 
             <div id="quizForm" class="quiz-form">
-                <h3 style="color: #4CAF50; margin-bottom: 30px; font-size: 28px;">Новая викторина</h3>
+                <h3 style="color: #ffd700; margin-bottom: 20px; font-size: 24px;">Новая викторина</h3>
                 
                 <div class="form-group">
                     <label>Тип викторины</label>
@@ -551,7 +691,7 @@ function loadContent() {
 
                 <div class="form-group">
                     <label>Описание</label>
-                    <textarea id="quizDescription" rows="3" placeholder="..."></textarea>
+                    <textarea id="quizDescription" rows="3" placeholder="Краткое описание..."></textarea>
                 </div>
 
                 <div class="form-group">
@@ -561,7 +701,7 @@ function loadContent() {
 
                 <div class="form-group" id="maxScoreGroup">
                     <label>Макс. балл</label>
-                    <input type="number" id="quizMaxScore" value="15">
+                    <input type="number" id="quizMaxScore" value="15" min="1" max="100">
                 </div>
 
                 <button class="submit-quiz" onclick="saveQuiz()">💾 Сохранить</button>
@@ -570,7 +710,7 @@ function loadContent() {
             <div id="quizzesList" class="quiz-grid"></div>
         </div>
 
-        ${userRole === 'teacher' ? `
+        ${userRole === 'teacher' || userRole === 'developer' || userIsModerator ? `
             <div class="my-quizzes-section">
                 <h2 class="section-title">📋 Мои проведенные викторины</h2>
                 <div id="myQuizzesList" class="sessions-grid"></div>
@@ -584,7 +724,7 @@ function loadContent() {
     `;
 
     loadAllQuizzes();
-    if (userRole === 'teacher') {
+    if (userRole === 'teacher' || userRole === 'developer' || userIsModerator) {
         loadTeacherSessions();
     } else {
         loadStudentResults();
@@ -707,7 +847,7 @@ function loadQuizzesBySubject(subject) {
                             <span class="quiz-badge ${q.type === 'kahoot' ? 'badge-kahoot' : 'badge-simple'}">
                                 ${q.type === 'kahoot' ? '🎮 Kahoot' : '📝 Простая'}
                             </span>
-                            ${userRole === 'teacher' ? `
+                            ${userRole === 'teacher' || userRole === 'developer' || userIsModerator ? `
                                 <button class="delete-btn" onclick="deleteQuiz('${key}')" title="Удалить">🗑️</button>
                             ` : ''}
                         </div>
@@ -719,7 +859,7 @@ function loadQuizzesBySubject(subject) {
                         ${q.type === 'kahoot' ? `<div class="quiz-maxscore">Макс: ${q.maxScore}</div>` : ''}
                         
                         <div class="quiz-actions">
-                            ${userRole === 'teacher' ? `
+                            ${userRole === 'teacher' || userRole === 'developer' || userIsModerator ? `
                                 ${q.type === 'kahoot' ? 
                                     `<button class="btn btn-teacher" onclick="startQuiz('${key}', '${teacherLink}', '${q.subject}', '${q.title}', ${q.maxScore})">▶️ Запустить</button>` :
                                     `<a href="${q.link}" target="_blank" class="btn btn-external">🌐 Перейти</a>`
