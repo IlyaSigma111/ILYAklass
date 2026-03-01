@@ -6,6 +6,9 @@ const baseSubjects = [
     'История', 'Физкультура'
 ];
 
+// Telegram Bot токен (встрой в существующий код)
+const TELEGRAM_BOT_TOKEN = '8632118104:AAFn7dJ-Zd4c7Xki_8cZKjDIc0JjU8Ubt5E';
+
 // ===== АВТОРИЗАЦИЯ =====
 auth.onAuthStateChanged(async (user) => {
     if (user) {
@@ -672,7 +675,7 @@ async function joinQuiz(quizId, link, subject, title, maxScore) {
     }
 }
 
-// ===== ЗАГРУЗКА СЕССИЙ УЧИТЕЛЯ (СЕТКОЙ) =====
+// ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ СЕССИЙ УЧИТЕЛЯ (теперь сворачиваемые) =====
 function loadTeacherSessions() {
     db.ref(`teacherSessions/${currentUser.uid}`).on('value', (snapshot) => {
         const sessions = snapshot.val();
@@ -684,7 +687,7 @@ function loadTeacherSessions() {
             return;
         }
 
-        let html = '<div class="sessions-grid">';
+        let html = '<div class="sessions-list">';
         const sortedIds = Object.keys(sessions).sort((a, b) => {
             return (sessions[b].startedAt || 0) - (sessions[a].startedAt || 0);
         });
@@ -692,34 +695,38 @@ function loadTeacherSessions() {
         sortedIds.forEach(id => {
             const s = sessions[id];
             const date = s.startedAt ? new Date(s.startedAt).toLocaleString() : 'Дата неизвестна';
+            const sessionId = `session-${id}`;
             
             html += `
-                <div class="session-card">
-                    <div class="session-header">
+                <div class="session-item">
+                    <div class="session-header" onclick="toggleSessionDetails('${sessionId}')">
                         <div>
-                            <div class="session-title">${s.quizSubject} - ${s.quizTitle}</div>
-                            <div class="session-date">${date}</div>
+                            <span class="session-title">${s.quizSubject} - ${s.quizTitle}</span>
+                            <span class="session-date">${date}</span>
                         </div>
                         <span class="session-status ${s.status === 'active' ? 'status-active' : 'status-finished'}">
                             ${s.status === 'active' ? '🟢 Активна' : '🔵 Завершена'}
                         </span>
+                        <span class="toggle-icon">▼</span>
                     </div>
                     
-                    <div class="students-list" id="students-${id}">
-                        ${renderStudents(s.students, s.maxScore, id, s.status)}
+                    <div id="${sessionId}" class="session-details" style="display: none;">
+                        <div class="students-list">
+                            ${renderStudents(s.students, s.maxScore, id, s.status)}
+                        </div>
+                        
+                        ${s.status === 'active' ? `
+                            <button class="finish-quiz-btn" onclick="finishQuiz('${id}')">
+                                🏁 Завершить
+                            </button>
+                        ` : ''}
+                        
+                        ${s.status === 'finished' ? `
+                            <button class="save-scores-btn" onclick="saveScores('${id}')">
+                                💾 Сохранить баллы
+                            </button>
+                        ` : ''}
                     </div>
-                    
-                    ${s.status === 'active' ? `
-                        <button class="finish-quiz-btn" onclick="finishQuiz('${id}')">
-                            🏁 Завершить
-                        </button>
-                    ` : ''}
-                    
-                    ${s.status === 'finished' ? `
-                        <button class="save-scores-btn" onclick="saveScores('${id}')">
-                            💾 Сохранить баллы
-                        </button>
-                    ` : ''}
                 </div>
             `;
         });
@@ -740,6 +747,21 @@ function loadTeacherSessions() {
     });
 }
 
+// Функция для сворачивания/разворачивания деталей сессии
+function toggleSessionDetails(sessionId) {
+    const details = document.getElementById(sessionId);
+    const header = details.previousElementSibling;
+    const icon = header.querySelector('.toggle-icon');
+    
+    if (details.style.display === 'none') {
+        details.style.display = 'block';
+        icon.textContent = '▲';
+    } else {
+        details.style.display = 'none';
+        icon.textContent = '▼';
+    }
+}
+
 function renderStudents(students, maxScore, sessionId, status) {
     if (!students || Object.keys(students).length === 0) {
         return '<p style="color: #666;">Пока нет учеников</p>';
@@ -754,7 +776,7 @@ function renderStudents(students, maxScore, sessionId, status) {
                 ${status === 'finished' ? 
                     `<input type="number" class="score-input" id="score-${sessionId}-${id}" 
                             max="${maxScore || 100}" min="0" 
-                            placeholder="0-${maxScore || 100}" value="0">` :
+                            placeholder="0-${maxScore || 100}" value="${student.score || 0}">` :
                     '<span style="color: #4CAF50;">✓ Присоединился</span>'
                 }
             </div>
@@ -773,6 +795,7 @@ async function finishQuiz(sessionId) {
     }
 }
 
+// ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ СОХРАНЕНИЯ БАЛЛОВ (теперь не пропадают) =====
 async function saveScores(sessionId) {
     try {
         const sessionSnap = await db.ref(`sessions/${sessionId}`).once('value');
@@ -791,7 +814,9 @@ async function saveScores(sessionId) {
             const score = parseInt(input.value);
             if (isNaN(score)) continue;
             
-            await db.ref('results').push({
+            // Сохраняем результат с уникальным ID, чтобы не дублировать
+            const resultId = `${sessionId}_${studentId}`;
+            await db.ref('results/' + resultId).set({
                 studentId: studentId,
                 studentName: session.students[studentId].name || 'Без имени',
                 quizSubject: session.quizSubject || 'Без названия',
@@ -799,8 +824,15 @@ async function saveScores(sessionId) {
                 score: score,
                 maxScore: session.maxScore || 0,
                 teacherId: currentUser.uid,
+                sessionId: sessionId,
                 date: Date.now()
             });
+            
+            // Сохраняем балл прямо в студента в сессии для сохранения после перезагрузки
+            await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}/students/${studentId}`).update({
+                score: score
+            });
+            
             count++;
         }
         
@@ -881,7 +913,7 @@ function loadStudentResults() {
             return;
         }
 
-        let html = '<div class="students-list">';
+        let html = '<div class="results-list">';
         const sortedIds = Object.keys(results).sort((a, b) => {
             return (results[b].date || 0) - (results[a].date || 0);
         });
@@ -891,7 +923,7 @@ function loadStudentResults() {
             const date = r.date ? new Date(r.date).toLocaleString() : 'Дата неизвестна';
             
             html += `
-                <div class="student-item">
+                <div class="result-item">
                     <div>
                         <strong style="color: #4CAF50;">${r.quizSubject} - ${r.quizTitle}</strong>
                         <div style="color: #666; font-size: 14px;">${date}</div>
@@ -904,3 +936,92 @@ function loadStudentResults() {
         container.innerHTML = html;
     });
 }
+
+// ===== ФУНКЦИИ ДЛЯ TELEGRAM БОТА (заготовка) =====
+async function getTelegramStats() {
+    try {
+        // Получаем всех пользователей
+        const usersSnap = await db.ref('users').once('value');
+        const users = usersSnap.val();
+        
+        // Получаем все результаты
+        const resultsSnap = await db.ref('results').once('value');
+        const results = resultsSnap.val();
+        
+        // Получаем все сессии
+        const sessionsSnap = await db.ref('sessions').once('value');
+        const sessions = sessionsSnap.val();
+        
+        // Считаем статистику
+        let teachers = 0;
+        let students = 0;
+        const teachersList = [];
+        const studentsList = [];
+        
+        if (users) {
+            Object.values(users).forEach(user => {
+                if (user.role === 'teacher') {
+                    teachers++;
+                    teachersList.push(user.fullName || user.googleName);
+                } else if (user.role === 'student') {
+                    students++;
+                    studentsList.push(user.fullName || user.googleName);
+                }
+            });
+        }
+        
+        const totalQuizzes = sessions ? Object.keys(sessions).length : 0;
+        const totalResults = results ? Object.keys(results).length : 0;
+        
+        // Формируем сообщение
+        let message = '📊 *Статистика ИЛЬЯКЛАСС*\n\n';
+        message += `👨‍🏫 *Учителя:* ${teachers}\n`;
+        message += `👨‍🎓 *Ученики:* ${students}\n`;
+        message += `📚 *Всего викторин:* ${totalQuizzes}\n`;
+        message += `📝 *Всего результатов:* ${totalResults}\n\n`;
+        
+        if (teachersList.length > 0) {
+            message += '*Список учителей:*\n';
+            teachersList.forEach(name => message += `• ${name}\n`);
+            message += '\n';
+        }
+        
+        if (studentsList.length > 0) {
+            message += '*Список учеников:*\n';
+            studentsList.forEach(name => message += `• ${name}\n`);
+        }
+        
+        return message;
+    } catch (error) {
+        console.error('Ошибка получения статистики:', error);
+        return '❌ Ошибка получения статистики';
+    }
+}
+
+// Функция для отправки сообщения в Telegram (можно вызвать из консоли)
+async function sendTelegramMessage(chatId, message) {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: chatId,
+                text: message,
+                parse_mode: 'Markdown'
+            })
+        });
+        
+        const data = await response.json();
+        console.log('Telegram response:', data);
+        return data;
+    } catch (error) {
+        console.error('Ошибка отправки в Telegram:', error);
+    }
+}
+
+// Пример использования (раскомментировать для теста):
+// sendTelegramMessage('@ilyaklass_channel', await getTelegramStats());
