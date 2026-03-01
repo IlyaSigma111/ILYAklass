@@ -29,65 +29,130 @@
         <div id="content" class="loading">Загрузка профиля...</div>
     </main>
 
-    <script src="firebase.js"></script>
     <script>
-        // Загрузка всех предметов
-        let allSubjects = [];
+        // Firebase конфиг
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-FGoB1L-euPEfGZvTN0pyfyLGZY4zGyE",
+            authDomain: "ilyaklass-b11c0.firebaseapp.com",
+            projectId: "ilyaklass-b11c0",
+            storageBucket: "ilyaklass-b11c0.firebasestorage.app",
+            messagingSenderId: "803990572684",
+            appId: "1:803990572684:web:f10f6399a2c0c035e5b5a9",
+            databaseURL: "https://ilyaklass-b11c0-default-rtdb.firebaseio.com/"
+        };
+
+        // Инициализация Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        let currentUser = null;
+        let userRole = null;
+        let userFullName = null;
         let teacherSubjects = [];
+        let profileSubjects = []; // Переименовал, чтобы не конфликтовать с app.js
         
-        async function loadAllSubjects() {
-            const subjectsSnap = await db.ref('subjects').once('value');
-            const subjects = subjectsSnap.val();
-            if (subjects) {
-                allSubjects = Object.values(subjects);
-            } else {
-                allSubjects = ['Русский язык', 'Алгебра', 'Геометрия', 'Математика', 'Химия', 'Физика', 'Литература', 'Английский язык', 'История', 'Физкультура'];
+        // Базовый список предметов на случай если в БД пусто
+        const defaultSubjects = [
+            'Русский язык', 'Алгебра', 'Геометрия', 'Математика', 
+            'Химия', 'Физика', 'Литература', 'Английский язык', 
+            'История', 'Физкультура'
+        ];
+        
+        // Загрузка всех предметов из БД
+        async function loadProfileSubjects() {
+            try {
+                const subjectsSnap = await db.ref('subjects').once('value');
+                const subjects = subjectsSnap.val();
+                if (subjects) {
+                    // Преобразуем объект в массив
+                    profileSubjects = Object.values(subjects);
+                } else {
+                    profileSubjects = [...defaultSubjects];
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки предметов:', error);
+                profileSubjects = [...defaultSubjects];
             }
         }
         
+        // Проверка авторизации
         auth.onAuthStateChanged(async (user) => {
             if (user) {
-                await loadAllSubjects();
+                currentUser = user;
                 
-                const userRef = db.ref('users/' + user.uid);
-                const snapshot = await userRef.once('value');
-                const userData = snapshot.val();
-                
-                document.getElementById('userSection').innerHTML = `
-                    <div class="user-card">
-                        <img src="${user.photoURL}" class="avatar">
-                        <span>${userData?.fullName || user.displayName}</span>
-                        <span class="role-badge">${userData?.role === 'teacher' ? 'Учитель' : 'Ученик'}</span>
-                        <button onclick="auth.signOut()" class="logout-btn">Выйти</button>
-                    </div>
-                `;
-                
-                if (userData?.role === 'teacher') {
-                    teacherSubjects = userData.subjects || [];
+                try {
+                    // Загружаем предметы
+                    await loadProfileSubjects();
+                    
+                    const userRef = db.ref('users/' + user.uid);
+                    const snapshot = await userRef.once('value');
+                    const userData = snapshot.val();
+                    
+                    if (userData) {
+                        userRole = userData.role;
+                        userFullName = userData.fullName || user.displayName;
+                        
+                        if (userData.role === 'teacher' && userData.subjects) {
+                            teacherSubjects = userData.subjects;
+                        }
+                        
+                        // Обновляем UI
+                        updateProfileUI();
+                        
+                        document.getElementById('userSection').innerHTML = `
+                            <div class="user-card">
+                                <img src="${user.photoURL}" class="avatar">
+                                <span style="font-weight: 500;">${userFullName}</span>
+                                <span class="role-badge">${userRole === 'teacher' ? 'Учитель' : 'Ученик'}</span>
+                                <button onclick="signOut()" class="logout-btn">Выйти</button>
+                            </div>
+                        `;
+                        
+                        // Загружаем содержимое профиля
+                        loadProfileContent(user, userData);
+                    } else {
+                        // Нет данных пользователя - отправляем на главную
+                        window.location.href = 'index.html';
+                    }
+                } catch (error) {
+                    console.error('Ошибка:', error);
+                    alert('Ошибка загрузки профиля');
                 }
-                
-                loadProfile(user, userData);
             } else {
                 window.location.href = 'index.html';
             }
         });
+
+        function signOut() {
+            auth.signOut();
+            window.location.href = 'index.html';
+        }
+
+        function updateProfileUI() {
+            // Обновляем интерфейс если нужно
+        }
         
-        function loadProfile(user, userData) {
+        function loadProfileContent(user, userData) {
             const content = document.getElementById('content');
+            
+            const showAllSubjects = localStorage.getItem('showAllSubjects') === 'true';
             
             content.innerHTML = `
                 <div class="profile-container">
                     <!-- Левая колонка - аватар и основная информация -->
                     <div class="profile-sidebar">
                         <img src="${user.photoURL}" class="profile-avatar">
-                        <div class="profile-name">${userData?.fullName || user.displayName}</div>
+                        <div class="profile-name">${userData.fullName || user.displayName}</div>
                         <div class="profile-email">${user.email}</div>
-                        <div class="profile-role">${userData?.role === 'teacher' ? 'Учитель' : 'Ученик'}</div>
+                        <div class="profile-role">${userData.role === 'teacher' ? '👨‍🏫 Учитель' : '👨‍🎓 Ученик'}</div>
                         
-                        ${userData?.role === 'teacher' ? `
+                        ${userData.role === 'teacher' ? `
                             <div style="margin-top: 30px;">
                                 <h3 style="color: #4CAF50; margin-bottom: 15px;">➕ Управление</h3>
-                                <button class="add-quiz-btn" onclick="window.location.href='index.html#addQuiz'" style="width: 100%;">➕ Добавить викторину</button>
+                                <button class="add-quiz-btn" onclick="window.location.href='index.html'" style="width: 100%;">➕ Добавить викторину</button>
                             </div>
                         ` : ''}
                     </div>
@@ -102,7 +167,7 @@
                                     <div class="setting-label">Фамилия и Имя</div>
                                     <div class="setting-description">Как вас видят другие пользователи</div>
                                 </div>
-                                <input type="text" id="fullNameInput" class="setting-input" value="${userData?.fullName || user.displayName}" placeholder="Иванов Иван">
+                                <input type="text" id="fullNameInput" class="setting-input" value="${userData.fullName || user.displayName}" placeholder="Иванов Иван">
                             </div>
                             
                             <button class="submit-quiz" onclick="saveFullName()" style="margin-top: 20px;">💾 Сохранить имя</button>
@@ -115,13 +180,13 @@
                                     <div class="setting-description">Показывать все предметы на главной</div>
                                 </div>
                                 <label class="subject-checkbox">
-                                    <input type="checkbox" id="showAllSubjects" ${localStorage.getItem('showAllSubjects') === 'true' ? 'checked' : ''} onchange="toggleAllSubjects()">
+                                    <input type="checkbox" id="showAllSubjects" ${showAllSubjects ? 'checked' : ''} onchange="toggleAllSubjects()">
                                     Включить
                                 </label>
                             </div>
                         </div>
                         
-                        ${userData?.role === 'teacher' ? `
+                        ${userData.role === 'teacher' ? `
                             <div class="settings-section">
                                 <h3 style="color: #4CAF50; margin-bottom: 20px;">📚 Мои предметы</h3>
                                 <div id="subjectsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;"></div>
@@ -138,7 +203,7 @@
                 </div>
             `;
             
-            if (userData?.role === 'teacher') {
+            if (userData.role === 'teacher') {
                 renderSubjectCheckboxes();
             }
         }
@@ -148,7 +213,7 @@
             if (!container) return;
             
             let html = '';
-            allSubjects.forEach(subject => {
+            profileSubjects.forEach(subject => {
                 html += `
                     <label class="subject-checkbox">
                         <input type="checkbox" value="${subject}" ${teacherSubjects.includes(subject) ? 'checked' : ''}>
@@ -166,15 +231,25 @@
                 return;
             }
             
-            if (allSubjects.includes(newSubject)) {
+            // Проверяем с заглавной буквы
+            const formattedSubject = newSubject.charAt(0).toUpperCase() + newSubject.slice(1);
+            
+            if (profileSubjects.includes(formattedSubject)) {
                 alert('Такой предмет уже существует');
                 return;
             }
             
-            await db.ref('subjects').push(newSubject);
-            allSubjects.push(newSubject);
-            renderSubjectCheckboxes();
-            document.getElementById('newSubjectInput').value = '';
+            try {
+                // Добавляем в БД
+                await db.ref('subjects').push(formattedSubject);
+                profileSubjects.push(formattedSubject);
+                renderSubjectCheckboxes();
+                document.getElementById('newSubjectInput').value = '';
+                alert('Предмет добавлен!');
+            } catch (error) {
+                console.error('Ошибка добавления предмета:', error);
+                alert('Ошибка при добавлении предмета');
+            }
         }
         
         async function saveFullName() {
@@ -184,29 +259,39 @@
                 return;
             }
             
-            await db.ref('users/' + currentUser.uid).update({
-                fullName: newName
-            });
-            
-            alert('Имя сохранено!');
-            window.location.reload();
+            try {
+                await db.ref('users/' + currentUser.uid).update({
+                    fullName: newName
+                });
+                
+                alert('Имя сохранено!');
+                window.location.reload();
+            } catch (error) {
+                console.error('Ошибка сохранения имени:', error);
+                alert('Ошибка при сохранении имени');
+            }
         }
         
         async function saveTeacherSubjects() {
             const checkboxes = document.querySelectorAll('#subjectsList input[type="checkbox"]:checked');
             const subjects = Array.from(checkboxes).map(cb => cb.value);
             
-            await db.ref('users/' + currentUser.uid).update({
-                subjects: subjects
-            });
-            
-            alert('Предметы сохранены!');
+            try {
+                await db.ref('users/' + currentUser.uid).update({
+                    subjects: subjects
+                });
+                
+                alert('Предметы сохранены!');
+            } catch (error) {
+                console.error('Ошибка сохранения предметов:', error);
+                alert('Ошибка при сохранении предметов');
+            }
         }
         
         function toggleAllSubjects() {
             const checked = document.getElementById('showAllSubjects').checked;
             localStorage.setItem('showAllSubjects', checked);
-            alert('Настройка сохранена. Обновите страницу.');
+            alert('Настройка сохранена. Она будет применена при следующем входе на главную страницу.');
         }
     </script>
 </body>
