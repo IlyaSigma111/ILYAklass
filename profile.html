@@ -11,7 +11,7 @@
 </head>
 <body>
     <header class="header">
-        <div style="display: flex; align-items: center; gap: 30px;">
+        <div class="header-left">
             <div class="logo" onclick="window.location='index.html'">
                 <span class="logo-il">ИЛЬ</span>
                 <span class="logo-yaclass">ЯКЛАСС</span>
@@ -21,9 +21,11 @@
                 <a href="results.html" class="nav-link">Результаты</a>
                 <a href="profile.html" class="nav-link active">Профиль</a>
             </nav>
-            <button class="theme-btn" onclick="toggleTheme()" id="themeToggle">🌙 Темная</button>
         </div>
-        <div id="userSection"></div>
+        <div class="header-right">
+            <button class="theme-btn" onclick="toggleTheme()" id="themeToggle">🌙 Темная</button>
+            <div id="userSection"></div>
+        </div>
     </header>
 
     <main class="main-container">
@@ -61,14 +63,21 @@
         let currentUser = null;
         let userRole = null;
         let userFullName = null;
+        let userIsModerator = false;
         let teacherSubjects = [];
         let profileSubjects = [];
         
+        const DEVELOPER_EMAIL = 'ilyagulkov25@gmail.com';
         const defaultSubjects = [
             'Русский язык', 'Алгебра', 'Геометрия', 'Математика', 
             'Химия', 'Физика', 'Литература', 'Английский язык', 
             'История', 'Физкультура'
         ];
+        
+        function cleanDisplayName(name) {
+            if (!name) return name;
+            return name.replace(/\s*\(\d+\)$/, '');
+        }
         
         async function loadProfileSubjects() {
             try {
@@ -99,19 +108,38 @@
                     if (userData) {
                         userRole = userData.role;
                         userFullName = userData.fullName || user.displayName;
+                        userIsModerator = userData.isModerator || false;
                         
-                        if (userData.role === 'teacher' && userData.subjects) {
-                            teacherSubjects = userData.subjects;
+                        const isDeveloper = user.email === DEVELOPER_EMAIL;
+                        
+                        let roleText = '';
+                        let roleClass = '';
+                        
+                        if (isDeveloper) {
+                            roleText = '👑 Разработчик';
+                            roleClass = 'developer';
+                        } else if (userIsModerator) {
+                            roleText = '🛡️ Модератор';
+                            roleClass = 'moderator';
+                        } else {
+                            roleText = userRole === 'teacher' ? '👨‍🏫 Учитель' : '👨‍🎓 Ученик';
+                            roleClass = userRole === 'teacher' ? 'teacher' : 'student';
                         }
                         
                         document.getElementById('userSection').innerHTML = `
                             <div class="user-card">
                                 <img src="${user.photoURL}" class="avatar">
-                                <span style="font-weight: 500;">${userFullName}</span>
-                                <span class="role-badge">${userRole === 'teacher' ? 'Учитель' : 'Ученик'}</span>
+                                <div class="user-info">
+                                    <span class="user-name">${cleanDisplayName(userFullName)}</span>
+                                    <span class="user-role ${roleClass}">${roleText}</span>
+                                </div>
                                 <button onclick="signOut()" class="logout-btn">Выйти</button>
                             </div>
                         `;
+                        
+                        if (userRole === 'teacher' && userData.subjects) {
+                            teacherSubjects = userData.subjects;
+                        }
                         
                         loadProfileContent(user, userData);
                     } else {
@@ -119,7 +147,6 @@
                     }
                 } catch (error) {
                     console.error('Ошибка:', error);
-                    alert('Ошибка загрузки профиля');
                 }
             } else {
                 window.location.href = 'index.html';
@@ -134,19 +161,35 @@
         function loadProfileContent(user, userData) {
             const content = document.getElementById('content');
             
+            const isDeveloper = user.email === DEVELOPER_EMAIL;
+            
+            let roleText = '';
+            let roleClass = '';
+            
+            if (isDeveloper) {
+                roleText = '👑 Разработчик';
+                roleClass = 'developer';
+            } else if (userIsModerator) {
+                roleText = '🛡️ Модератор';
+                roleClass = 'moderator';
+            } else {
+                roleText = userRole === 'teacher' ? '👨‍🏫 Учитель' : '👨‍🎓 Ученик';
+                roleClass = userRole === 'teacher' ? 'teacher' : 'student';
+            }
+            
             const showAllSubjects = localStorage.getItem('showAllSubjects') === 'true';
             
             content.innerHTML = `
                 <div class="profile-container">
                     <div class="profile-sidebar">
                         <img src="${user.photoURL}" class="profile-avatar">
-                        <div class="profile-name">${userData.fullName || user.displayName}</div>
+                        <div class="profile-name">${cleanDisplayName(userFullName)}</div>
                         <div class="profile-email">${user.email}</div>
-                        <div class="profile-role">${userData.role === 'teacher' ? '👨‍🏫 Учитель' : '👨‍🎓 Ученик'}</div>
+                        <div class="profile-role ${roleClass}">${roleText}</div>
                         
-                        ${userData.role === 'teacher' ? `
+                        ${userRole === 'teacher' || isDeveloper || userIsModerator ? `
                             <div style="margin-top: 30px;">
-                                <h3 style="color: #4CAF50; margin-bottom: 15px;">➕ Управление</h3>
+                                <h3 style="color: #ffd700; margin-bottom: 15px;">➕ Управление</h3>
                                 <button class="add-quiz-btn" onclick="window.location.href='index.html#addQuiz'" style="width: 100%;">➕ Добавить викторину</button>
                             </div>
                         ` : ''}
@@ -161,7 +204,7 @@
                                     <div class="setting-label">Фамилия и Имя</div>
                                     <div class="setting-description">Как вас видят другие пользователи</div>
                                 </div>
-                                <input type="text" id="fullNameInput" class="setting-input" value="${userData.fullName || user.displayName}" placeholder="Иванов Иван">
+                                <input type="text" id="fullNameInput" class="setting-input" value="${cleanDisplayName(userFullName)}" placeholder="Иванов Иван">
                             </div>
                             
                             <button class="submit-quiz" onclick="saveFullName()" style="margin-top: 20px;">💾 Сохранить имя</button>
@@ -180,9 +223,9 @@
                             </div>
                         </div>
                         
-                        ${userData.role === 'teacher' ? `
+                        ${userRole === 'teacher' ? `
                             <div class="settings-section">
-                                <h3 style="color: #4CAF50; margin-bottom: 20px;">📚 Мои предметы</h3>
+                                <h3 style="color: #ffd700; margin-bottom: 20px;">📚 Мои предметы</h3>
                                 <div id="subjectsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;"></div>
                                 
                                 <div style="display: flex; gap: 15px; margin-bottom: 30px;">
@@ -197,7 +240,7 @@
                 </div>
             `;
             
-            if (userData.role === 'teacher') {
+            if (userRole === 'teacher') {
                 renderSubjectCheckboxes();
             }
         }
