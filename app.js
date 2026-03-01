@@ -6,8 +6,9 @@ const baseSubjects = [
     'История', 'Физкультура'
 ];
 
-// Telegram Bot токен (встрой в существующий код)
+// Telegram Bot настройки - ТВОЙ ID 1474901393
 const TELEGRAM_BOT_TOKEN = '8632118104:AAFn7dJ-Zd4c7Xki_8cZKjDIc0JjU8Ubt5E';
+const TELEGRAM_CHAT_ID = '1474901393';
 
 // ===== АВТОРИЗАЦИЯ =====
 auth.onAuthStateChanged(async (user) => {
@@ -675,7 +676,7 @@ async function joinQuiz(quizId, link, subject, title, maxScore) {
     }
 }
 
-// ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ СЕССИЙ УЧИТЕЛЯ (теперь сворачиваемые) =====
+// ===== ЗАГРУЗКА СЕССИЙ УЧИТЕЛЯ (со сворачиванием) =====
 function loadTeacherSessions() {
     db.ref(`teacherSessions/${currentUser.uid}`).on('value', (snapshot) => {
         const sessions = snapshot.val();
@@ -789,13 +790,22 @@ async function finishQuiz(sessionId) {
     try {
         await db.ref(`sessions/${sessionId}`).update({ status: 'finished' });
         await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).update({ status: 'finished' });
+        
+        // Отправляем уведомление в Telegram о завершении викторины
+        const session = (await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).once('value')).val();
+        sendTelegramMessage(`
+🎮 <b>Викторина завершена!</b>
+📖 ${session.quizSubject} - ${session.quizTitle}
+👥 Участников: ${Object.keys(session.students || {}).length}
+        `);
+        
     } catch (error) {
         console.error('Ошибка при завершении:', error);
         alert('Ошибка при завершении викторины');
     }
 }
 
-// ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ СОХРАНЕНИЯ БАЛЛОВ (теперь не пропадают) =====
+// ===== СОХРАНЕНИЕ БАЛЛОВ =====
 async function saveScores(sessionId) {
     try {
         const sessionSnap = await db.ref(`sessions/${sessionId}`).once('value');
@@ -814,7 +824,7 @@ async function saveScores(sessionId) {
             const score = parseInt(input.value);
             if (isNaN(score)) continue;
             
-            // Сохраняем результат с уникальным ID, чтобы не дублировать
+            // Сохраняем результат с уникальным ID
             const resultId = `${sessionId}_${studentId}`;
             await db.ref('results/' + resultId).set({
                 studentId: studentId,
@@ -828,7 +838,7 @@ async function saveScores(sessionId) {
                 date: Date.now()
             });
             
-            // Сохраняем балл прямо в студента в сессии для сохранения после перезагрузки
+            // Сохраняем балл в сессию
             await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}/students/${studentId}`).update({
                 score: score
             });
@@ -838,11 +848,117 @@ async function saveScores(sessionId) {
         
         alert(`✅ Сохранено ${count} результатов!`);
         
+        // Отправляем статистику в Telegram
+        const stats = await getTelegramStats();
+        sendTelegramMessage(stats);
+        
     } catch (error) {
         console.error('Ошибка при сохранении:', error);
         alert('Ошибка при сохранении результатов');
     }
 }
+
+// ===== TELEGRAM ФУНКЦИИ =====
+// Функция отправки сообщения в Telegram
+async function sendTelegramMessage(text) {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: TELEGRAM_CHAT_ID,
+                text: text,
+                parse_mode: 'HTML'
+            })
+        });
+        
+        const data = await response.json();
+        if (data.ok) {
+            console.log('✅ Сообщение отправлено в Telegram');
+        } else {
+            console.error('❌ Ошибка Telegram:', data);
+        }
+    } catch (error) {
+        console.error('❌ Ошибка отправки:', error);
+    }
+}
+
+// Функция получения статистики
+async function getTelegramStats() {
+    try {
+        const usersSnap = await db.ref('users').once('value');
+        const resultsSnap = await db.ref('results').once('value');
+        const sessionsSnap = await db.ref('sessions').once('value');
+        
+        const users = usersSnap.val() || {};
+        const results = resultsSnap.val() || {};
+        const sessions = sessionsSnap.val() || {};
+        
+        let teachers = 0, students = 0;
+        Object.values(users).forEach(u => {
+            if (u.role === 'teacher') teachers++;
+            else if (u.role === 'student') students++;
+        });
+        
+        return `
+📊 <b>СТАТИСТИКА ИЛЬЯКЛАСС</b>
+
+👨‍🏫 Учителей: ${teachers}
+👨‍🎓 Учеников: ${students}
+📚 Всего викторин: ${Object.keys(sessions).length}
+📝 Всего результатов: ${Object.keys(results).length}
+
+🕐 ${new Date().toLocaleString('ru-RU')}
+        `;
+    } catch (error) {
+        console.error('Ошибка получения статистики:', error);
+        return '❌ Ошибка получения статистики';
+    }
+}
+
+// Отправляем статистику каждый день в 20:00
+function scheduleDailyStats() {
+    const now = new Date();
+    const night = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1,
+        20, 0, 0
+    );
+    const msUntilNight = night.getTime() - now.getTime();
+    
+    setTimeout(async () => {
+        const stats = await getTelegramStats();
+        sendTelegramMessage(stats);
+        setInterval(async () => {
+            const stats = await getTelegramStats();
+            sendTelegramMessage(stats);
+        }, 24 * 60 * 60 * 1000);
+    }, msUntilNight);
+}
+
+// Запускаем планировщик после авторизации
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        scheduleDailyStats();
+    }
+});
+
+// Отправляем приветственное сообщение при запуске
+setTimeout(async () => {
+    const stats = await getTelegramStats();
+    sendTelegramMessage(`
+🚀 <b>ИЛЬЯКЛАСС ЗАПУЩЕН!</b>
+
+${stats}
+
+✅ Бот активен и будет присылать статистику каждый день в 20:00
+    `);
+}, 5000);
 
 // ===== ОЧИСТКА ВСЕЙ СТАТИСТИКИ =====
 async function clearAllStats() {
@@ -855,13 +971,11 @@ async function clearAllStats() {
     }
     
     try {
-        // Показываем сообщение о начале очистки
         const loadingMsg = document.createElement('div');
         loadingMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 20px; border: 3px solid #f44336; z-index: 9999; box-shadow: 0 10px 40px rgba(0,0,0,0.3); text-align: center;';
         loadingMsg.innerHTML = '<h3 style="color: #f44336; margin-bottom: 15px;">🧹 Очистка...</h3><p>Удаляем все результаты</p><div style="width: 100%; height: 4px; background: #f0f0f0; margin-top: 20px; border-radius: 2px;"><div id="progressBar" style="width: 0%; height: 100%; background: #f44336; border-radius: 2px; transition: width 0.3s;"></div></div>';
         document.body.appendChild(loadingMsg);
         
-        // Получаем все результаты
         const resultsSnap = await db.ref('results').once('value');
         const results = resultsSnap.val();
         
@@ -874,25 +988,27 @@ async function clearAllStats() {
         const total = Object.keys(results).length;
         let count = 0;
         
-        // Удаляем каждый результат
         for (const key of Object.keys(results)) {
             await db.ref('results/' + key).remove();
             count++;
             
-            // Обновляем прогресс
             const progress = (count / total) * 100;
             const progressBar = document.getElementById('progressBar');
             if (progressBar) {
                 progressBar.style.width = progress + '%';
             }
-            loadingMsg.innerHTML = `<h3 style="color: #f44336; margin-bottom: 15px;">🧹 Очистка...</h3><p>Удалено ${count} из ${total} результатов</p><div style="width: 100%; height: 4px; background: #f0f0f0; margin-top: 20px; border-radius: 2px;"><div style="width: ${progress}%; height: 100%; background: #f44336; border-radius: 2px; transition: width 0.3s;"></div></div>`;
         }
         
         document.body.removeChild(loadingMsg);
-        
         alert(`✅ Успешно удалено ${count} результатов!`);
         
-        // Перезагружаем страницу
+        // Отправляем уведомление об очистке
+        sendTelegramMessage(`
+🧹 <b>ОЧИСТКА СТАТИСТИКИ</b>
+Удалено ${count} результатов
+🕐 ${new Date().toLocaleString('ru-RU')}
+        `);
+        
         window.location.reload();
         
     } catch (error) {
@@ -936,92 +1052,3 @@ function loadStudentResults() {
         container.innerHTML = html;
     });
 }
-
-// ===== ФУНКЦИИ ДЛЯ TELEGRAM БОТА (заготовка) =====
-async function getTelegramStats() {
-    try {
-        // Получаем всех пользователей
-        const usersSnap = await db.ref('users').once('value');
-        const users = usersSnap.val();
-        
-        // Получаем все результаты
-        const resultsSnap = await db.ref('results').once('value');
-        const results = resultsSnap.val();
-        
-        // Получаем все сессии
-        const sessionsSnap = await db.ref('sessions').once('value');
-        const sessions = sessionsSnap.val();
-        
-        // Считаем статистику
-        let teachers = 0;
-        let students = 0;
-        const teachersList = [];
-        const studentsList = [];
-        
-        if (users) {
-            Object.values(users).forEach(user => {
-                if (user.role === 'teacher') {
-                    teachers++;
-                    teachersList.push(user.fullName || user.googleName);
-                } else if (user.role === 'student') {
-                    students++;
-                    studentsList.push(user.fullName || user.googleName);
-                }
-            });
-        }
-        
-        const totalQuizzes = sessions ? Object.keys(sessions).length : 0;
-        const totalResults = results ? Object.keys(results).length : 0;
-        
-        // Формируем сообщение
-        let message = '📊 *Статистика ИЛЬЯКЛАСС*\n\n';
-        message += `👨‍🏫 *Учителя:* ${teachers}\n`;
-        message += `👨‍🎓 *Ученики:* ${students}\n`;
-        message += `📚 *Всего викторин:* ${totalQuizzes}\n`;
-        message += `📝 *Всего результатов:* ${totalResults}\n\n`;
-        
-        if (teachersList.length > 0) {
-            message += '*Список учителей:*\n';
-            teachersList.forEach(name => message += `• ${name}\n`);
-            message += '\n';
-        }
-        
-        if (studentsList.length > 0) {
-            message += '*Список учеников:*\n';
-            studentsList.forEach(name => message += `• ${name}\n`);
-        }
-        
-        return message;
-    } catch (error) {
-        console.error('Ошибка получения статистики:', error);
-        return '❌ Ошибка получения статистики';
-    }
-}
-
-// Функция для отправки сообщения в Telegram (можно вызвать из консоли)
-async function sendTelegramMessage(chatId, message) {
-    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-    
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                chat_id: chatId,
-                text: message,
-                parse_mode: 'Markdown'
-            })
-        });
-        
-        const data = await response.json();
-        console.log('Telegram response:', data);
-        return data;
-    } catch (error) {
-        console.error('Ошибка отправки в Telegram:', error);
-    }
-}
-
-// Пример использования (раскомментировать для теста):
-// sendTelegramMessage('@ilyaklass_channel', await getTelegramStats());
