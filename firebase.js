@@ -9,6 +9,7 @@ const firebaseConfig = {
     databaseURL: "https://ilyaklass-b11c0-default-rtdb.firebaseio.com/"
 };
 
+// Инициализация Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
@@ -19,19 +20,22 @@ let currentUser = null;
 let userRole = null;
 let userFullName = null;
 let teacherSubjects = [];
-let selectedSubject = null;
+let selectedSubject = 'all';
 let quizType = 'kahoot';
 
-// Список предметов с иконками
-const subjects = [
-    { name: 'Русский язык', icon: '📖' },
-    { name: 'Алгебра', icon: '🔢' },
-    { name: 'Геометрия', icon: '📐' },
-    { name: 'Математика', icon: '🧮' },
-    { name: 'Химия', icon: '🧪' },
-    { name: 'Физика', icon: '⚡' },
-    { name: 'Литература', icon: '📚' },
-    { name: 'Английский язык', icon: '🇬🇧' },
-    { name: 'История', icon: '🏛️' },
-    { name: 'Физкультура', icon: '⚽' }
+// Базовый список предметов
+const baseSubjects = [
+    'Русский язык',
+    'Алгебра',
+    'Геометрия',
+    'Математика',
+    'Химия',
+    'Физика',
+    'Литература',
+    'Английский язык',
+    'История',
+    'Физкультура'
 ];
+
+// Динамический список предметов (будет загружаться из БД)
+let allSubjects = [...baseSubjects];
