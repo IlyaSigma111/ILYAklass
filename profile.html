@@ -8,12 +8,10 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-    <!-- EmailJS для отправки писем -->
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
     <header class="header">
-        <div style="display: flex; align-items: center;">
+        <div style="display: flex; align-items: center; width: 100%; justify-content: space-between;">
             <div class="logo" onclick="window.location='index.html'">
                 <span class="logo-il">ИЛЬ</span>
                 <span class="logo-yaclass">ЯКЛАСС</span>
@@ -23,8 +21,8 @@
                 <a href="results.html" class="nav-link">Результаты</a>
                 <a href="profile.html" class="nav-link active">Профиль</a>
             </nav>
+            <div id="userSection"></div>
         </div>
-        <div id="userSection"></div>
     </header>
 
     <main class="main-container">
@@ -35,16 +33,18 @@
 
     <script src="firebase.js"></script>
     <script>
-        // Инициализация EmailJS (замени на свои ключи)
-        emailjs.init("YOUR_PUBLIC_KEY");
-
         function loadPageContent() {
             const content = document.getElementById('content');
             
             if (!currentUser) {
                 content.innerHTML = `
-                    <div style="text-align: center; padding: 5rem;">
-                        <h1 style="font-size: 3rem; margin-bottom: 1rem;">Войдите, чтобы управлять профилем</h1>
+                    <div class="login-container">
+                        <div class="login-card">
+                            <h2>Войдите в профиль</h2>
+                            <button class="login-big-btn" onclick="signIn()" style="font-size: 1.2rem; padding: 1rem 2rem;">
+                                Войти через Google
+                            </button>
+                        </div>
                     </div>
                 `;
                 return;
@@ -52,132 +52,51 @@
 
             content.innerHTML = `
                 <div style="display: grid; grid-template-columns: 300px 1fr; gap: 2rem;">
-                    <!-- Левая колонка с аватаром -->
                     <div class="settings-section" style="text-align: center;">
                         <img src="${currentUser.photoURL}" style="width: 150px; height: 150px; border-radius: 50%; border: 4px solid #ffd700; margin-bottom: 1rem;">
-                        <h2>${currentUser.displayName}</h2>
+                        <h2>${userFullName || currentUser.displayName}</h2>
                         <p style="color: #aaa;">${currentUser.email}</p>
                         <div style="background: #ffd700; color: #0b1120; display: inline-block; padding: 0.3rem 1rem; border-radius: 30px; margin-top: 1rem;">
                             ${userRole === 'teacher' ? '👨‍🏫 Учитель' : '👨‍🎓 Ученик'}
                         </div>
                     </div>
 
-                    <!-- Правая колонка с настройками -->
                     <div class="settings-section">
-                        <h2 style="color: #ffd700; margin-bottom: 2rem;">⚙️ Настройки</h2>
+                        <h2 style="color: #ffd700; margin-bottom: 2rem;">⚙️ Настройки профиля</h2>
                         
-                        <!-- Фильтры по умолчанию -->
                         <div class="setting-item">
                             <div>
-                                <div class="setting-label">Фильтр по классу по умолчанию</div>
-                                <div class="setting-description">Какой класс показывать при входе</div>
+                                <div class="setting-label">Фамилия и Имя</div>
+                                <div class="setting-description">Как вас видно в списках учеников</div>
                             </div>
-                            <select id="defaultClass" onchange="saveSetting('classFilter', this.value)" style="padding: 0.5rem; border-radius: 10px; background: #0f172a; color: white; border: 1px solid #ffd700;">
-                                <option value="all">Все классы</option>
-                                <option value="5">5 класс</option>
-                                <option value="6">6 класс</option>
-                                <option value="7">7 класс</option>
-                                <option value="8">8 класс</option>
-                                <option value="9">9 класс</option>
-                                <option value="10">10 класс</option>
-                                <option value="11">11 класс</option>
-                            </select>
-                        </div>
-
-                        <div class="setting-item">
-                            <div>
-                                <div class="setting-label">Фильтр по предмету по умолчанию</div>
-                                <div class="setting-description">Какой предмет показывать при входе</div>
-                            </div>
-                            <select id="defaultSubject" onchange="saveSetting('subjectFilter', this.value)" style="padding: 0.5rem; border-radius: 10px; background: #0f172a; color: white; border: 1px solid #ffd700;">
-                                <option value="all">Все предметы</option>
-                                <option value="Английский язык">Английский</option>
-                                <option value="Математика">Математика</option>
-                                <option value="История">История</option>
-                                <option value="Русский язык">Русский язык</option>
-                            </select>
-                        </div>
-
-                        <!-- Email уведомления -->
-                        <div class="setting-item">
-                            <div>
-                                <div class="setting-label">Email уведомления</div>
-                                <div class="setting-description">Получать результаты на почту</div>
-                            </div>
-                            <div class="toggle-switch ${userSettings?.emailNotifications ? 'active' : ''}" 
-                                 onclick="toggleSetting('emailNotifications')" 
-                                 id="emailToggle">
+                            <div style="display: flex; gap: 1rem;">
+                                <input type="text" id="fullNameInput" value="${userFullName || ''}" 
+                                       placeholder="Иванов Иван" 
+                                       style="padding: 0.5rem; border-radius: 10px; background: #0f172a; color: white; border: 1px solid #ffd700;">
+                                <button onclick="updateFullName()" style="background: #ffd700; color: #0b1120; border: none; padding: 0.5rem 1rem; border-radius: 10px; cursor: pointer;">
+                                    Сохранить
+                                </button>
                             </div>
                         </div>
-
-                        <!-- Темная тема -->
-                        <div class="setting-item">
-                            <div>
-                                <div class="setting-label">Темная тема</div>
-                                <div class="setting-description">Всегда включена 🌙</div>
-                            </div>
-                            <div class="toggle-switch active">
-                            </div>
-                        </div>
-
-                        <!-- Для учителя: тестовая отправка письма -->
-                        ${userRole === 'teacher' ? `
-                            <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #ffffff1a;">
-                                <h3 style="color: #ffd700; margin-bottom: 1rem;">📧 Тест отправки писем</h3>
-                                <div class="form-group">
-                                    <label>Email ученика</label>
-                                    <input type="email" id="testEmail" placeholder="student@example.com">
-                                </div>
-                                <div class="form-group">
-                                    <label>Результат</label>
-                                    <input type="text" id="testScore" placeholder="Например: 12/15">
-                                </div>
-                                <button class="submit-quiz" onclick="sendTestEmail()">Отправить тестовое письмо</button>
-                            </div>
-                        ` : ''}
                     </div>
                 </div>
             `;
-
-            // Устанавливаем значения из настроек
-            if (userSettings) {
-                document.getElementById('defaultClass').value = userSettings.classFilter || 'all';
-                document.getElementById('defaultSubject').value = userSettings.subjectFilter || 'all';
-            }
         }
 
-        // Сохранение отдельной настройки
-        async function saveSetting(key, value) {
-            const newSettings = { ...userSettings, [key]: value };
-            await saveSettings(newSettings);
-        }
-
-        // Переключение булевых настроек
-        async function toggleSetting(key) {
-            const newValue = !userSettings[key];
-            const newSettings = { ...userSettings, [key]: newValue };
-            await saveSettings(newSettings);
-            
-            // Обновляем внешний вид переключателя
-            document.getElementById(key + 'Toggle').classList.toggle('active');
-        }
-
-        // Тестовая отправка письма
-        function sendTestEmail() {
-            const email = document.getElementById('testEmail').value;
-            const score = document.getElementById('testScore').value;
-            
-            if (!email || !score) {
-                alert('Заполните все поля');
+        async function updateFullName() {
+            const newName = document.getElementById('fullNameInput').value;
+            if (!newName) {
+                alert('Введите фамилию и имя');
                 return;
             }
-
-            // Здесь будет реальная отправка через EmailJS
-            alert(`Тестовое письмо отправлено на ${email} с результатом ${score}`);
             
-            // Очищаем поля
-            document.getElementById('testEmail').value = '';
-            document.getElementById('testScore').value = '';
+            await db.ref('users/' + currentUser.uid).update({
+                fullName: newName
+            });
+            
+            userFullName = newName;
+            alert('Имя сохранено!');
+            window.location.reload();
         }
     </script>
 </body>
