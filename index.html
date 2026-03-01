@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ИЛЬЯКЛАСС - Главная</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+</head>
+<body>
+    <header class="header">
+        <div style="display: flex; align-items: center;">
+            <div class="logo" onclick="window.location='index.html'">
+                <span class="logo-il">ИЛЬ</span>
+                <span class="logo-yaclass">ЯКЛАСС</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-link active">Викторины</a>
+                <a href="results.html" class="nav-link">Результаты</a>
+                <a href="profile.html" class="nav-link">Профиль</a>
+            </nav>
+        </div>
+        <div id="userSection"></div>
+    </header>
+
+    <main class="main-container">
+        <div id="content">
+            <div class="loading">Загрузка...</div>
+        </div>
+    </main>
+
+    <!-- Модальное окно выбора роли -->
+    <div id="roleModal" class="modal-overlay">
+        <div class="role-modal">
+            <h2>Добро пожаловать в ИЛЬЯКЛАСС!</h2>
+            <p style="color: #aaa; margin-bottom: 2rem;">Выберите роль — это решение нельзя будет изменить</p>
+            
+            <div class="role-options">
+                <div class="role-option teacher" onclick="selectRole('teacher')">
+                    <div class="role-icon">👨‍🏫</div>
+                    <h3>Учитель</h3>
+                    <p style="color: #aaa; margin-top: 1rem;">Создавать викторины, управлять классами, выставлять баллы</p>
+                </div>
+                <div class="role-option student" onclick="selectRole('student')">
+                    <div class="role-icon">👨‍🎓</div>
+                    <h3>Ученик</h3>
+                    <p style="color: #aaa; margin-top: 1rem;">Проходить викторины, смотреть результаты, получать оценки</p>
+                </div>
+            </div>
+            
+            <p class="warning-text">⚠️ Внимание: после подтверждения роль изменить нельзя</p>
+        </div>
+    </div>
+
+    <script src="firebase.js"></script>
+    <script>
+        // Функция загрузки контента для главной страницы
+        function loadPageContent() {
+            const content = document.getElementById('content');
+            
+            if (!currentUser) {
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 5rem;">
+                        <h1 style="font-size: 3rem; margin-bottom: 1rem;">Добро пожаловать в <span style="color:#ffd700;">ИЛЬЯКЛАСС</span></h1>
+                        <p style="font-size: 1.2rem; color: #aaa;">Войдите, чтобы продолжить</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Формируем HTML в зависимости от роли
+            if (userRole === 'teacher') {
+                content.innerHTML = `
+                    <button class="add-quiz-btn" onclick="toggleQuizForm()">➕ Добавить викторину</button>
+                    
+                    <!-- Панель фильтров -->
+                    <div class="filters-panel">
+                        <div class="filters-title">
+                            <span>🔍</span> Фильтры
+                        </div>
+                        <div class="filters-grid">
+                            <div class="filter-item">
+                                <label>Класс</label>
+                                <select id="classFilter" onchange="applyFilters()">
+                                    <option value="all">Все классы</option>
+                                    <option value="5">5 класс</option>
+                                    <option value="6">6 класс</option>
+                                    <option value="7">7 класс</option>
+                                    <option value="8">8 класс</option>
+                                    <option value="9">9 класс</option>
+                                    <option value="10">10 класс</option>
+                                    <option value="11">11 класс</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label>Предмет</label>
+                                <select id="subjectFilter" onchange="applyFilters()">
+                                    <option value="all">Все предметы</option>
+                                    <option value="Английский язык">Английский</option>
+                                    <option value="Математика">Математика</option>
+                                    <option value="История">История</option>
+                                    <option value="Русский язык">Русский язык</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Форма добавления викторины -->
+                    <div id="quizForm" class="quiz-form">
+                        <h3 style="color:#ffd700; margin-bottom:1.5rem;">Новая викторина</h3>
+                        <div class="form-group">
+                            <label>Класс</label>
+                            <select id="quizClass">
+                                <option value="5">5 класс</option>
+                                <option value="6">6 класс</option>
+                                <option value="7">7 класс</option>
+                                <option value="8">8 класс</option>
+                                <option value="9">9 класс</option>
+                                <option value="10">10 класс</option>
+                                <option value="11">11 класс</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Предмет</label>
+                            <input type="text" id="quizSubject" placeholder="Например: Английский язык">
+                        </div>
+                        <div class="form-group">
+                            <label>Тема</label>
+                            <input type="text" id="quizTopic" placeholder="Например: Conditionals">
+                        </div>
+                        <div class="form-group">
+                            <label>Название папки (после /)</label>
+                            <input type="text" id="quizFolder" placeholder="Например: conditionals">
+                            <small style="color:#aaa;">Будет подставлено в: https://ilyasigma111.github.io/ПАПКА/</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Максимальный балл</label>
+                            <input type="number" id="quizMaxScore" placeholder="Например: 15">
+                        </div>
+                        <button class="submit-quiz" onclick="saveQuiz()">Сохранить викторину</button>
+                    </div>
+
+                    <div id="quizzesList">Загрузка викторин...</div>
+                `;
+            } else {
+                content.innerHTML = `
+                    <!-- Панель фильтров для ученика -->
+                    <div class="filters-panel">
+                        <div class="filters-title">
+                            <span>🔍</span> Фильтры
+                        </div>
+                        <div class="filters-grid">
+                            <div class="filter-item">
+                                <label>Класс</label>
+                                <select id="classFilter" onchange="applyFilters()">
+                                    <option value="all">Все классы</option>
+                                    <option value="5">5 класс</option>
+                                    <option value="6">6 класс</option>
+                                    <option value="7">7 класс</option>
+                                    <option value="8">8 класс</option>
+                                    <option value="9">9 класс</option>
+                                    <option value="10">10 класс</option>
+                                    <option value="11">11 класс</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label>Предмет</label>
+                                <select id="subjectFilter" onchange="applyFilters()">
+                                    <option value="all">Все предметы</option>
+                                    <option value="Английский язык">Английский</option>
+                                    <option value="Математика">Математика</option>
+                                    <option value="История">История</option>
+                                    <option value="Русский язык">Русский язык</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="quizzesList">Загрузка викторин...</div>
+                `;
+            }
+
+            // Загружаем викторины
+            loadQuizzes();
+
+            // Устанавливаем сохраненные фильтры
+            if (userSettings) {
+                document.getElementById('classFilter').value = userSettings.classFilter || 'all';
+                document.getElementById('subjectFilter').value = userSettings.subjectFilter || 'all';
+            }
+        }
+
+        // Загрузка викторин из Firebase
+        function loadQuizzes() {
+            db.ref('quizzes').on('value', (snapshot) => {
+                const quizzes = snapshot.val();
+                renderQuizzes(quizzes);
+            });
+        }
+
+        // Применение фильтров
+        function applyFilters() {
+            const classFilter = document.getElementById('classFilter').value;
+            const subjectFilter = document.getElementById('subjectFilter').value;
+            
+            // Сохраняем настройки
+            if (currentUser) {
+                saveSettings({
+                    ...userSettings,
+                    classFilter: classFilter,
+                    subjectFilter: subjectFilter
+                });
+            }
+            
+            // Перезагружаем с фильтрацией
+            loadQuizzes();
+        }
+
+        // Отрисовка викторин с фильтрацией
+        function renderQuizzes(quizzes) {
+            const container = document.getElementById('quizzesList');
+            if (!quizzes) {
+                container.innerHTML = '<p style="text-align:center; color:#aaa;">Пока нет викторин</p>';
+                return;
+            }
+
+            const classFilter = document.getElementById('classFilter')?.value || 'all';
+            const subjectFilter = document.getElementById('subjectFilter')?.value || 'all';
+
+            let html = '<div class="quiz-grid">';
+            
+            Object.keys(quizzes).forEach(key => {
+                const q = quizzes[key];
+                
+                // Применяем фильтры
+                if (classFilter !== 'all' && q.class != classFilter) return;
+                if (subjectFilter !== 'all' && q.subject !== subjectFilter) return;
+                
+                html += `
+                    <div class="quiz-card">
+                        <div class="quiz-class">${q.class} класс</div>
+                        <div class="quiz-title">${q.subject}</div>
+                        <div class="quiz-subject">${q.topic}</div>
+                        <div style="margin: 1rem 0; color:#ffd700;">Макс. балл: ${q.maxScore}</div>
+                        <div class="quiz-actions">
+                            ${userRole === 'teacher' ? 
+                                `<a href="${q.teacherLink}" target="_blank" class="btn btn-teacher">👨‍🏫 Панель учителя</a>` : 
+                                `<a href="${q.studentLink}" target="_blank" class="btn btn-student">👨‍🎓 Играть</a>`
+                            }
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Показать/скрыть форму
+        function toggleQuizForm() {
+            document.getElementById('quizForm').classList.toggle('visible');
+        }
+
+        // Сохранение викторины
+        async function saveQuiz() {
+            const quizClass = document.getElementById('quizClass').value;
+            const subject = document.getElementById('quizSubject').value;
+            const topic = document.getElementById('quizTopic').value;
+            const folder = document.getElementById('quizFolder').value;
+            const maxScore = document.getElementById('quizMaxScore').value;
+
+            if (!subject || !topic || !folder || !maxScore) {
+                alert('Заполните все поля');
+                return;
+            }
+
+            const quizData = {
+                class: quizClass,
+                subject: subject,
+                topic: topic,
+                folder: folder,
+                maxScore: parseInt(maxScore),
+                teacherLink: `https://ilyasigma111.github.io/${folder}/teacher.html`,
+                studentLink: `https://ilyasigma111.github.io/${folder}/student.html`,
+                createdBy: currentUser.uid,
+                createdAt: firebase.database.ServerValue.TIMESTAMP
+            };
+
+            await db.ref('quizzes').push(quizData);
+            document.getElementById('quizForm').classList.remove('visible');
+            
+            // Очищаем форму
+            document.getElementById('quizSubject').value = '';
+            document.getElementById('quizTopic').value = '';
+            document.getElementById('quizFolder').value = '';
+            document.getElementById('quizMaxScore').value = '';
+        }
+    </script>
+</body>
+</html>
