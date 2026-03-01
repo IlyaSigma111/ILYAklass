@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ИЛЬЯКЛАСС - Результаты</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+</head>
+<body>
+    <header class="header">
+        <div style="display: flex; align-items: center;">
+            <div class="logo" onclick="window.location='index.html'">
+                <span class="logo-il">ИЛЬ</span>
+                <span class="logo-yaclass">ЯКЛАСС</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-link">Викторины</a>
+                <a href="results.html" class="nav-link active">Результаты</a>
+                <a href="profile.html" class="nav-link">Профиль</a>
+            </nav>
+        </div>
+        <div id="userSection"></div>
+    </header>
+
+    <main class="main-container">
+        <div id="content">
+            <div class="loading">Загрузка...</div>
+        </div>
+    </main>
+
+    <script src="firebase.js"></script>
+    <script>
+        function loadPageContent() {
+            const content = document.getElementById('content');
+            
+            if (!currentUser) {
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 5rem;">
+                        <h1 style="font-size: 3rem; margin-bottom: 1rem;">Войдите, чтобы видеть результаты</h1>
+                    </div>
+                `;
+                return;
+            }
+
+            if (userRole === 'teacher') {
+                // Для учителя - все результаты
+                content.innerHTML = `
+                    <h1 style="font-size: 2.5rem; margin-bottom: 2rem;">📊 Все результаты</h1>
+                    <div class="filters-panel">
+                        <div class="filters-grid">
+                            <div class="filter-item">
+                                <label>Викторина</label>
+                                <select id="quizFilter" onchange="loadResults()">
+                                    <option value="all">Все викторины</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label>Класс</label>
+                                <select id="classFilter" onchange="loadResults()">
+                                    <option value="all">Все классы</option>
+                                    <option value="5">5 класс</option>
+                                    <option value="6">6 класс</option>
+                                    <option value="7">7 класс</option>
+                                    <option value="8">8 класс</option>
+                                    <option value="9">9 класс</option>
+                                    <option value="10">10 класс</option>
+                                    <option value="11">11 класс</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="resultsContainer" class="results-table"></div>
+                `;
+                
+                // Загружаем список викторин для фильтра
+                db.ref('quizzes').once('value', (snapshot) => {
+                    const quizzes = snapshot.val();
+                    const select = document.getElementById('quizFilter');
+                    if (quizzes) {
+                        Object.keys(quizzes).forEach(key => {
+                            const q = quizzes[key];
+                            select.innerHTML += `<option value="${key}">${q.subject} - ${q.topic} (${q.class} класс)</option>`;
+                        });
+                    }
+                });
+                
+                loadResults();
+            } else {
+                // Для ученика - его результаты
+                content.innerHTML = `
+                    <h1 style="font-size: 2.5rem; margin-bottom: 2rem;">📊 Мои результаты</h1>
+                    <div id="resultsContainer" class="results-table"></div>
+                `;
+                loadStudentResults();
+            }
+        }
+
+        function loadResults() {
+            const quizFilter = document.getElementById('quizFilter')?.value || 'all';
+            const classFilter = document.getElementById('classFilter')?.value || 'all';
+            
+            db.ref('results').once('value', (snapshot) => {
+                const results = snapshot.val();
+                const container = document.getElementById('resultsContainer');
+                
+                if (!results) {
+                    container.innerHTML = '<p style="text-align:center;">Пока нет результатов</p>';
+                    return;
+                }
+
+                let html = '<table><tr><th>Ученик</th><th>Викторина</th><th>Класс</th><th>Балл</th><th>Дата</th></tr>';
+                
+                Object.keys(results).forEach(key => {
+                    const r = results[key];
+                    
+                    // Здесь должна быть фильтрация по викторине и классу
+                    // Для простоты пока выводим всё
+                    
+                    html += `
+                        <tr>
+                            <td>${r.studentName || 'Неизвестно'}</td>
+                            <td>${r.quizName || 'Викторина'}</td>
+                            <td>${r.class || '-'}</td>
+                            <td><span class="score-badge">${r.score}/${r.maxScore}</span></td>
+                            <td>${new Date(r.date).toLocaleDateString()}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</table>';
+                container.innerHTML = html;
+            });
+        }
+
+        function loadStudentResults() {
+            db.ref('results').orderByChild('studentId').equalTo(currentUser.uid).once('value', (snapshot) => {
+                const results = snapshot.val();
+                const container = document.getElementById('resultsContainer');
+                
+                if (!results) {
+                    container.innerHTML = '<p style="text-align:center;">У вас пока нет результатов</p>';
+                    return;
+                }
+
+                let html = '<table><tr><th>Викторина</th><th>Тема</th><th>Балл</th><th>Дата</th></tr>';
+                
+                Object.keys(results).forEach(key => {
+                    const r = results[key];
+                    html += `
+                        <tr>
+                            <td>${r.quizSubject || 'Викторина'}</td>
+                            <td>${r.quizTopic || ''}</td>
+                            <td><span class="score-badge">${r.score}/${r.maxScore}</span></td>
+                            <td>${new Date(r.date).toLocaleDateString()}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</table>';
+                container.innerHTML = html;
+            });
+        }
+    </script>
+</body>
+</html>
