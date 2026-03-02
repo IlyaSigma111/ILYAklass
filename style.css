@@ -390,7 +390,7 @@ body.dark-theme .header {
     color: white;
 }
 
-/* ===== КНОПКИ В МОДАЛЬНЫХ ОКНАХ ===== */
+/* ===== КНОПКИ ===== */
 .submit-quiz {
     background: linear-gradient(135deg, #ffd700, #ffaa00);
     color: #1a1a2e;
@@ -1205,6 +1205,96 @@ body.dark-theme .header {
     border-radius: 30px;
 }
 
+/* ===== КОНСТРУКТОР ===== */
+.question-card {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    color: #ffd700;
+    font-weight: 600;
+}
+
+.remove-question {
+    background: none;
+    border: none;
+    color: #ff4444;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 5px 10px;
+}
+
+.answer-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 15px;
+}
+
+.answer-option input[type="text"] {
+    flex: 1;
+    margin: 0;
+}
+
+.answer-option input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    accent-color: #ffd700;
+}
+
+.correct-badge {
+    color: #4CAF50;
+    font-size: 14px;
+    margin-left: 10px;
+}
+
+.add-question-btn {
+    background: rgba(255, 215, 0, 0.2);
+    border: 2px dashed #ffd700;
+    color: #ffd700;
+    padding: 15px;
+    border-radius: 20px;
+    width: 100%;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 20px 0;
+    transition: all 0.3s;
+}
+
+.add-question-btn:hover {
+    background: rgba(255, 215, 0, 0.3);
+}
+
+.question-count {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.question-count input {
+    width: 80px;
+    text-align: center;
+}
+
+.constructor-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 /* ===== АДАПТАЦИЯ ===== */
 @media (max-width: 768px) {
     .header {
@@ -1313,6 +1403,37 @@ body.dark-theme .header {
     
     .constructor-buttons button {
         width: 100%;
+    }
+    
+    .modal-overlay {
+        padding: 10px;
+        align-items: flex-start;
+        overflow-y: auto;
+    }
+    
+    .role-modal {
+        margin: 20px auto;
+        max-height: none;
+        padding: 20px;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        font-size: 16px;
+        padding: 12px 15px;
+    }
+    
+    .login-big-btn,
+    .submit-quiz,
+    .finish-quiz-btn,
+    .add-quiz-btn {
+        min-height: 48px;
+        font-size: 16px;
+    }
+    
+    .radio-option {
+        padding: 15px 20px;
     }
 }
 
