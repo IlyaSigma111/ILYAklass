@@ -10,442 +10,56 @@ const TELEGRAM_BOT_TOKEN = '8632118104:AAFn7dJ-Zd4c7Xki_8cZKjDIc0JjU8Ubt5E';
 const TELEGRAM_CHAT_ID = '1474901393';
 let lastUpdateId = 0;
 let pollingActive = true;
-let botStarted = false; // Флаг для защиты от спама
-let processedUpdates = new Set(); // Множество обработанных update_id
+let botStarted = false;
+let processedUpdates = new Set();
 
-// Email разработчика (твой)
+// Email разработчика (для Google входа)
 const DEVELOPER_EMAIL = 'ilyagulkov25@gmail.com';
 
-// ===== ФУНКЦИИ ДЛЯ РАБОТЫ С ИМЕНАМИ =====
-function cleanDisplayName(name) {
-    if (!name) return name;
-    // Убираем скобки с числом для отображения
-    return name.replace(/\s*\(\d+\)$/, '');
-}
-
-function getBaseName(name) {
-    if (!name) return name;
-    // Получаем имя без скобок для проверки уникальности
-    return name.replace(/\s*\(\d+\)$/, '').trim();
-}
-
-function checkIfModerator(name) {
-    if (!name) return false;
-    // Проверяем, есть ли скобки с числом в конце
-    return /\s*\(\d+\)$/.test(name);
-}
-
-async function isNameTaken(baseName, excludeUid = null) {
-    const usersSnap = await db.ref('users').once('value');
-    const users = usersSnap.val() || {};
+// ===== ОБНОВЛЕННАЯ АВТОРИЗАЦИЯ (поддерживает оба способа) =====
+auth.onAuthStateChanged(async (googleUser) => {
+    // Проверяем сначала simple-пользователя
+    const simpleUser = getCurrentSimpleUser();
     
-    for (const uid in users) {
-        if (excludeUid && uid === excludeUid) continue;
+    if (simpleUser) {
+        // Используем simple-пользователя
+        currentUser = {
+            uid: simpleUser.id,
+            email: simpleUser.username + '@local',
+            displayName: simpleUser.username,
+            photoURL: 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'
+        };
+        userRole = simpleUser.role;
+        userFullName = simpleUser.fullName || simpleUser.username;
+        userIsModerator = simpleUser.isModerator || false;
         
-        const user = users[uid];
-        const userBaseName = getBaseName(user.fullName || user.googleName);
+        await loadAllSubjects();
+        document.getElementById('roleModal').style.display = 'none';
+        updateUI();
         
-        if (userBaseName.toLowerCase() === baseName.toLowerCase()) {
-            return true;
+        const savedSubject = localStorage.getItem('selectedSubject_' + currentUser.uid);
+        if (savedSubject && (savedSubject === 'all' || allSubjects.includes(savedSubject))) {
+            selectedSubject = savedSubject;
+        } else {
+            selectedSubject = 'all';
         }
-    }
-    return false;
-}
-
-async function getUniqueName(baseName) {
-    let uniqueName = baseName;
-    let counter = 1;
-    
-    while (await isNameTaken(getBaseName(uniqueName))) {
-        uniqueName = `${baseName}(${counter})`;
-        counter++;
-    }
-    
-    return uniqueName;
-}
-
-// ===== TELEGRAM ФУНКЦИИ =====
-async function sendTelegramMessage(text, chatId = TELEGRAM_CHAT_ID) {
-    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-    
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: chatId,
-                text: text,
-                parse_mode: 'HTML'
-            })
-        });
-        const data = await response.json();
-        console.log('Telegram response:', data);
-        return data;
-    } catch (error) {
-        console.error('Ошибка отправки в Telegram:', error);
-    }
-}
-
-async function getTelegramUpdates() {
-    try {
-        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=10`;
-        const response = await fetch(url);
-        const data = await response.json();
         
-        if (data.ok && data.result.length > 0) {
-            for (const update of data.result) {
-                // Проверяем, не обрабатывали ли мы уже это обновление
-                if (processedUpdates.has(update.update_id)) {
-                    continue;
-                }
-                
-                lastUpdateId = update.update_id;
-                processedUpdates.add(update.update_id);
-                
-                // Ограничиваем размер множества (чтобы не раздувалось)
-                if (processedUpdates.size > 100) {
-                    const iterator = processedUpdates.values();
-                    processedUpdates.delete(iterator.next().value);
-                }
-                
-                if (update.message && update.message.text) {
-                    const chatId = update.message.chat.id;
-                    const text = update.message.text.trim();
-                    
-                    await handleTelegramCommand(text, chatId);
-                }
-            }
-        }
-    } catch (error) {
-        console.error('Ошибка получения обновлений:', error);
-    }
-    
-    if (pollingActive) {
-        setTimeout(getTelegramUpdates, 2000);
-    }
-}
-
-async function handleTelegramCommand(command, chatId) {
-    let response = '';
-    
-    switch(command) {
-        case '/start':
-            response = `
-🚀 <b>Добро пожаловать в бота ИЛЬЯКЛАСС!</b>
-
-📊 <b>Доступные команды:</b>
-
-/stats - Полная статистика
-/teachers - Список учителей
-/students - Список учеников
-/moderators - Список модераторов
-/quizzes - Все викторины
-/results - Все результаты
-/top - Топ учеников
-/active - Активные викторины
-/help - Помощь
-            `;
-            break;
-            
-        case '/help':
-            response = `
-📚 <b>Помощь по командам:</b>
-
-/stats - общая статистика по платформе
-/teachers - список всех учителей
-/students - список всех учеников
-/moderators - список модераторов
-/quizzes - количество и список викторин
-/results - статистика по результатам
-/top - топ учеников по баллам
-/active - список активных викторин
-            `;
-            break;
-            
-        case '/stats':
-            response = await getFullStats();
-            break;
-            
-        case '/teachers':
-            response = await getTeachersList();
-            break;
-            
-        case '/students':
-            response = await getStudentsList();
-            break;
-            
-        case '/moderators':
-            response = await getModeratorsList();
-            break;
-            
-        case '/quizzes':
-            response = await getQuizzesList();
-            break;
-            
-        case '/results':
-            response = await getResultsStats();
-            break;
-            
-        case '/top':
-            response = await getTopStudents();
-            break;
-            
-        case '/active':
-            response = await getActiveQuizzes();
-            break;
-            
-        default:
-            if (command.startsWith('/')) {
-                response = '❌ Неизвестная команда. Напишите /help';
-            } else {
-                return;
-            }
-    }
-    
-    if (response) {
-        await sendTelegramMessage(response, chatId);
-    }
-}
-
-async function getFullStats() {
-    try {
-        const [usersSnap, resultsSnap, sessionsSnap, quizzesSnap] = await Promise.all([
-            db.ref('users').once('value'),
-            db.ref('results').once('value'),
-            db.ref('sessions').once('value'),
-            db.ref('quizzes').once('value')
-        ]);
+        loadContent();
         
-        const users = usersSnap.val() || {};
-        const results = resultsSnap.val() || {};
-        const sessions = sessionsSnap.val() || {};
-        const quizzes = quizzesSnap.val() || {};
-        
-        let developers = 0, moderators = 0, teachers = 0, students = 0;
-        const developersList = [];
-        const moderatorsList = [];
-        const teachersList = [];
-        const studentsList = [];
-        
-        Object.entries(users).forEach(([id, u]) => {
-            const displayName = cleanDisplayName(u.fullName || u.googleName);
-            
-            if (u.role === 'developer') {
-                developers++;
-                developersList.push(`👑 ${displayName}`);
-            } else if (u.isModerator) {
-                moderators++;
-                moderatorsList.push(`🛡️ ${displayName}`);
-            } else if (u.role === 'teacher') {
-                teachers++;
-                teachersList.push(`👨‍🏫 ${displayName}`);
-            } else if (u.role === 'student') {
-                students++;
-                studentsList.push(`👨‍🎓 ${displayName}`);
-            }
-        });
-        
-        const totalSessions = Object.keys(sessions).length;
-        const activeSessions = Object.values(sessions).filter(s => s.status === 'active').length;
-        const totalResults = Object.keys(results).length;
-        const totalQuizzes = Object.keys(quizzes).length;
-        
-        let totalScore = 0;
-        Object.values(results).forEach(r => totalScore += r.score || 0);
-        const avgScore = totalResults > 0 ? (totalScore / totalResults).toFixed(1) : 0;
-        
-        return `
-📊 <b>ПОЛНАЯ СТАТИСТИКА ИЛЬЯКЛАСС</b>
-
-👥 <b>Пользователи:</b>
-• Разработчиков: ${developers}
-• Модераторов: ${moderators}
-• Учителей: ${teachers}
-• Учеников: ${students}
-• Всего: ${developers + moderators + teachers + students}
-
-📚 <b>Викторины:</b>
-• Всего создано: ${totalQuizzes}
-• Проведено игр: ${totalSessions}
-• Активных сейчас: ${activeSessions}
-
-📝 <b>Результаты:</b>
-• Всего результатов: ${totalResults}
-• Средний балл: ${avgScore}
-• Сумма баллов: ${totalScore}
-
-👑 <b>Разработчики (${developers}):</b>
-${developersList.join('\n') || '• Нет'}
-
-🛡️ <b>Модераторы (${moderators}):</b>
-${moderatorsList.join('\n') || '• Нет'}
-
-👨‍🏫 <b>Учителя (${teachers}):</b>
-${teachersList.slice(0, 5).join('\n')}${teachersList.length > 5 ? `\n... и еще ${teachersList.length - 5}` : ''}
-
-👨‍🎓 <b>Ученики (${students}):</b>
-${studentsList.slice(0, 5).join('\n')}${studentsList.length > 5 ? `\n... и еще ${studentsList.length - 5}` : ''}
-
-🕐 ${new Date().toLocaleString('ru-RU')}
-        `;
-    } catch (error) {
-        console.error('Ошибка stats:', error);
-        return '❌ Ошибка получения статистики';
-    }
-}
-
-async function getModeratorsList() {
-    const usersSnap = await db.ref('users').once('value');
-    const users = usersSnap.val() || {};
-    
-    let moderators = [];
-    Object.values(users).forEach(u => {
-        if (u.isModerator) {
-            moderators.push(`🛡️ ${cleanDisplayName(u.fullName || u.googleName)}`);
-        }
-    });
-    
-    return moderators.length > 0 
-        ? `🛡️ <b>Список модераторов (${moderators.length}):</b>\n\n${moderators.join('\n')}`
-        : '🛡️ Модераторов пока нет';
-}
-
-async function getTeachersList() {
-    const usersSnap = await db.ref('users').once('value');
-    const users = usersSnap.val() || {};
-    
-    let teachers = [];
-    Object.values(users).forEach(u => {
-        if (u.role === 'teacher' && !u.isModerator) {
-            teachers.push(`• ${cleanDisplayName(u.fullName || u.googleName)}`);
-        }
-    });
-    
-    return teachers.length > 0 
-        ? `👨‍🏫 <b>Список учителей (${teachers.length}):</b>\n\n${teachers.join('\n')}`
-        : '👨‍🏫 Учителей пока нет';
-}
-
-async function getStudentsList() {
-    const usersSnap = await db.ref('users').once('value');
-    const users = usersSnap.val() || {};
-    
-    let students = [];
-    Object.values(users).forEach(u => {
-        if (u.role === 'student' && !u.isModerator) {
-            students.push(`• ${cleanDisplayName(u.fullName || u.googleName)}`);
-        }
-    });
-    
-    return students.length > 0 
-        ? `👨‍🎓 <b>Список учеников (${students.length}):</b>\n\n${students.join('\n')}`
-        : '👨‍🎓 Учеников пока нет';
-}
-
-async function getQuizzesList() {
-    const quizzesSnap = await db.ref('quizzes').once('value');
-    const quizzes = quizzesSnap.val() || {};
-    
-    let bySubject = {};
-    Object.values(quizzes).forEach(q => {
-        bySubject[q.subject] = (bySubject[q.subject] || 0) + 1;
-    });
-    
-    let subjects = Object.entries(bySubject)
-        .map(([s, c]) => `• ${s}: ${c} викторин`)
-        .join('\n');
-    
-    return `
-📚 <b>Статистика викторин:</b>
-• Всего: ${Object.keys(quizzes).length}
-
-<b>По предметам:</b>
-${subjects}
-    `;
-}
-
-async function getResultsStats() {
-    const resultsSnap = await db.ref('results').once('value');
-    const results = resultsSnap.val() || {};
-    
-    let bySubject = {};
-    let totalScore = 0;
-    
-    Object.values(results).forEach(r => {
-        bySubject[r.quizSubject] = (bySubject[r.quizSubject] || 0) + 1;
-        totalScore += r.score || 0;
-    });
-    
-    let subjects = Object.entries(bySubject)
-        .map(([s, c]) => `• ${s}: ${c} результатов`)
-        .join('\n');
-    
-    return `
-📝 <b>Статистика результатов:</b>
-• Всего: ${Object.keys(results).length}
-• Сумма баллов: ${totalScore}
-• Средний балл: ${(totalScore / Object.keys(results).length).toFixed(1)}
-
-<b>По предметам:</b>
-${subjects}
-    `;
-}
-
-async function getTopStudents() {
-    const resultsSnap = await db.ref('results').once('value');
-    const results = resultsSnap.val() || {};
-    
-    let studentScores = {};
-    Object.values(results).forEach(r => {
-        if (!studentScores[r.studentName]) {
-            studentScores[r.studentName] = { total: 0, count: 0 };
-        }
-        studentScores[r.studentName].total += r.score || 0;
-        studentScores[r.studentName].count++;
-    });
-    
-    let top = Object.entries(studentScores)
-        .map(([name, data]) => ({ name: cleanDisplayName(name), avg: data.total / data.count, total: data.total }))
-        .sort((a, b) => b.total - a.total)
-        .slice(0, 10)
-        .map((s, i) => `${i+1}. ${s.name} — ${s.total} баллов (ср. ${s.avg.toFixed(1)})`)
-        .join('\n');
-    
-    return `🏆 <b>Топ учеников:</b>\n\n${top || 'Пока нет данных'}`;
-}
-
-async function getActiveQuizzes() {
-    const sessionsSnap = await db.ref('sessions').once('value');
-    const sessions = sessionsSnap.val() || {};
-    
-    let active = [];
-    Object.entries(sessions).forEach(([id, s]) => {
-        if (s.status === 'active') {
-            active.push(`• ${s.quizSubject} - ${s.quizTitle}\n  👥 ${Object.keys(s.students || {}).length} учеников`);
-        }
-    });
-    
-    return active.length > 0
-        ? `🟢 <b>Активные викторины (${active.length}):</b>\n\n${active.join('\n\n')}`
-        : '🟢 Активных викторин нет';
-}
-
-// ===== АВТОРИЗАЦИЯ =====
-auth.onAuthStateChanged(async (user) => {
-    if (user) {
-        currentUser = user;
+    } else if (googleUser) {
+        // Используем Google-пользователя
+        currentUser = googleUser;
         await loadAllSubjects();
         
-        const userRef = db.ref('users/' + user.uid);
+        const userRef = db.ref('users/' + googleUser.uid);
         const snapshot = await userRef.once('value');
         let userData = snapshot.val();
         
         if (userData && userData.role) {
             userRole = userData.role;
-            userFullName = userData.fullName || user.displayName;
+            userFullName = userData.fullName || googleUser.displayName;
             
-            // Проверяем, разработчик ли это
-            const isDeveloper = user.email === DEVELOPER_EMAIL;
+            const isDeveloper = googleUser.email === DEVELOPER_EMAIL;
             
             if (isDeveloper) {
                 userRole = 'developer';
@@ -455,8 +69,7 @@ auth.onAuthStateChanged(async (user) => {
                     isModerator: false
                 });
             } else {
-                // Проверяем, модератор ли это (по наличию скобок в имени)
-                userIsModerator = userData.isModerator || checkIfModerator(user.displayName);
+                userIsModerator = userData.isModerator || checkIfModerator(googleUser.displayName);
                 
                 if (userIsModerator && !userData.isModerator) {
                     await db.ref('users/' + currentUser.uid).update({
@@ -512,46 +125,48 @@ function signIn() {
 }
 
 function signOut() {
-    auth.signOut();
+    if (getCurrentSimpleUser()) {
+        simpleLogout();
+    } else {
+        auth.signOut();
+    }
 }
 
 async function selectRole(role) {
     if (!currentUser) return;
     
-    // Проверяем уникальность имени
-    const baseName = getBaseName(currentUser.displayName);
-    const isTaken = await isNameTaken(baseName);
-    
-    let finalName = currentUser.displayName;
-    if (isTaken) {
-        finalName = await getUniqueName(baseName);
-    }
-    
-    const isDeveloper = currentUser.email === DEVELOPER_EMAIL;
-    const isModerator = !isDeveloper && checkIfModerator(finalName);
-    
-    const userData = {
-        email: currentUser.email,
-        googleName: currentUser.displayName,
-        avatar: currentUser.photoURL,
-        role: isDeveloper ? 'developer' : role,
-        fullName: finalName,
-        isModerator: isModerator,
-        registeredAt: Date.now()
-    };
-    
-    await db.ref('users/' + currentUser.uid).set(userData);
-    
-    document.getElementById('roleModal').style.display = 'none';
-    userFullName = finalName;
-    userRole = isDeveloper ? 'developer' : role;
-    userIsModerator = isModerator;
-    
-    if (role === 'teacher' && !isDeveloper) {
-        document.getElementById('subjectModal').style.display = 'flex';
-        renderSubjectCheckboxes();
-    } else {
-        window.location.reload();
+    try {
+        const baseName = getBaseName(currentUser.displayName);
+        
+        const isDeveloper = currentUser.email === DEVELOPER_EMAIL;
+        const isModerator = !isDeveloper && checkIfModerator(currentUser.displayName);
+        
+        const userData = {
+            email: currentUser.email,
+            googleName: currentUser.displayName,
+            avatar: currentUser.photoURL,
+            role: isDeveloper ? 'developer' : role,
+            fullName: currentUser.displayName,
+            isModerator: isModerator,
+            registeredAt: Date.now()
+        };
+        
+        await db.ref('users/' + currentUser.uid).set(userData);
+        
+        document.getElementById('roleModal').style.display = 'none';
+        userFullName = currentUser.displayName;
+        userRole = isDeveloper ? 'developer' : role;
+        userIsModerator = isModerator;
+        
+        if (role === 'teacher' && !isDeveloper) {
+            document.getElementById('subjectModal').style.display = 'flex';
+            renderSubjectCheckboxes();
+        } else {
+            window.location.reload();
+        }
+    } catch (error) {
+        console.error('Ошибка при выборе роли:', error);
+        alert('Ошибка при регистрации. Попробуйте еще раз.');
     }
 }
 
@@ -620,8 +235,8 @@ function loadContent() {
                         <span class="logo-yaclass">ЯКЛАСС</span>
                     </div>
                     <div class="login-subtitle">Войдите, чтобы продолжить</div>
-                    <button class="login-big-btn" onclick="signIn()">
-                        🔑 Войти через Google
+                    <button class="login-big-btn" onclick="showLoginModal()">
+                        🔑 Войти
                     </button>
                 </div>
             </div>
@@ -659,74 +274,21 @@ function loadContent() {
             <div class="section-header">
                 <h2 class="section-title" id="selectedSubjectTitle">${selectedSubject === 'all' ? 'Все предметы' : selectedSubject}</h2>
                 ${userRole === 'teacher' || userRole === 'developer' || userIsModerator ? `
-                    <button class="add-quiz-btn" onclick="toggleForm()">➕ Добавить викторину</button>
+                    <div class="constructor-buttons">
+                        <button class="add-quiz-btn" onclick="toggleForm()">➕ По ссылке</button>
+                        <button class="add-quiz-btn" onclick="showConstructor()">🛠️ Конструктор</button>
+                    </div>
                 ` : ''}
             </div>
 
-            <div id="quizForm" class="quiz-form">
-                <h3 style="color: #ffd700; margin-bottom: 20px; font-size: 24px;">Новая викторина</h3>
-                
-                <div class="form-group">
-                    <label>Тип викторины</label>
-                    <div class="radio-group" id="quizTypeGroup">
-                        <div class="radio-option selected" onclick="selectQuizType('kahoot')" id="type-kahoot">
-                            <input type="radio" name="quizType" value="kahoot" checked> 🎮 Kahoot
-                        </div>
-                        <div class="radio-option" onclick="selectQuizType('simple')" id="type-simple">
-                            <input type="radio" name="quizType" value="simple"> 📝 Простая
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Класс</label>
-                    <select id="quizClass">
-                        <option value="5">5 класс</option>
-                        <option value="6">6 класс</option>
-                        <option value="7">7 класс</option>
-                        <option value="8">8 класс</option>
-                        <option value="9">9 класс</option>
-                        <option value="10">10 класс</option>
-                        <option value="11">11 класс</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Предмет</label>
-                    <select id="quizSubject">
-                        ${allSubjects.map(s => `<option value="${s}" ${selectedSubject !== 'all' && selectedSubject === s ? 'selected' : ''}>${s}</option>`).join('')}
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Название</label>
-                    <input type="text" id="quizTitle" placeholder="Conditionals">
-                </div>
-
-                <div class="form-group">
-                    <label>Описание</label>
-                    <textarea id="quizDescription" rows="3" placeholder="Краткое описание..."></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label>Ссылка</label>
-                    <input type="url" id="quizLink" placeholder="https://...">
-                </div>
-
-                <div class="form-group" id="maxScoreGroup">
-                    <label>Макс. балл</label>
-                    <input type="number" id="quizMaxScore" value="15" min="1" max="100">
-                </div>
-
-                <button class="submit-quiz" onclick="saveQuiz()">💾 Сохранить</button>
-            </div>
+            <div id="quizForm" class="quiz-form"></div>
 
             <div id="quizzesList" class="quiz-grid"></div>
         </div>
 
         ${userRole === 'teacher' || userRole === 'developer' || userIsModerator ? `
             <div class="my-quizzes-section">
-                <h2 class="section-title">📋 Мои проведенные викторины</h2>
+                <h2 class="section-title">📋 Мои проведенные</h2>
                 <div id="myQuizzesList" class="sessions-grid"></div>
             </div>
         ` : `
@@ -793,8 +355,7 @@ function loadAllQuizzes() {
         if (userRole === 'student') {
             const countAllEl = document.getElementById('count-all');
             if (countAllEl) {
-                const total = Object.values(quizzes).length;
-                countAllEl.textContent = `${total} викторин`;
+                countAllEl.textContent = `${Object.values(quizzes).length} викторин`;
             }
         }
         
@@ -815,7 +376,7 @@ function loadQuizzesBySubject(subject) {
         if (!container) return;
         
         if (!quizzes) {
-            container.innerHTML = '<div class="empty-message">В этом разделе пока нет викторин</div>';
+            container.innerHTML = '<div class="empty-message">Нет викторин</div>';
             return;
         }
 
@@ -844,43 +405,51 @@ function loadQuizzesBySubject(subject) {
                 let teacherLink = q.link;
                 let studentLink = q.link;
                 
-                if (q.type === 'kahoot' && q.link.includes('ilyasigma111.github.io')) {
+                if (q.type === 'kahoot' && q.link && q.link.includes('ilyasigma111.github.io')) {
                     if (!teacherLink.endsWith('/teacher.html') && !teacherLink.endsWith('/student.html')) {
                         teacherLink = teacherLink.replace(/\/?$/, '') + '/teacher.html';
                         studentLink = studentLink.replace(/\/?$/, '') + '/student.html';
-                    } else if (teacherLink.endsWith('/teacher.html')) {
-                        studentLink = teacherLink.replace('/teacher.html', '/student.html');
-                    } else if (teacherLink.endsWith('/student.html')) {
-                        teacherLink = studentLink.replace('/student.html', '/teacher.html');
                     }
+                }
+                
+                let badgeClass = 'badge-simple';
+                let badgeText = '📝 Простая';
+                
+                if (q.type === 'kahoot') {
+                    badgeClass = 'badge-kahoot';
+                    badgeText = '🎮 Kahoot';
+                } else if (q.type === 'constructed') {
+                    badgeClass = 'badge-constructed';
+                    badgeText = '🛠️ Конструктор';
                 }
                 
                 html += `
                     <div class="quiz-card">
                         <div class="quiz-header">
-                            <span class="quiz-badge ${q.type === 'kahoot' ? 'badge-kahoot' : 'badge-simple'}">
-                                ${q.type === 'kahoot' ? '🎮 Kahoot' : '📝 Простая'}
-                            </span>
+                            <span class="quiz-badge ${badgeClass}">${badgeText}</span>
                             ${userRole === 'teacher' || userRole === 'developer' || userIsModerator ? `
-                                <button class="delete-btn" onclick="deleteQuiz('${key}')" title="Удалить">🗑️</button>
+                                <button class="delete-btn" onclick="deleteQuiz('${key}')">🗑️</button>
                             ` : ''}
                         </div>
                         <div class="quiz-class">${q.class} класс</div>
                         <div class="quiz-title">${q.title}</div>
                         <div class="quiz-subject">${q.subject}</div>
-                        ${q.description ? `<p class="quiz-description">${q.description}</p>` : ''}
-                        <div class="quiz-link">🔗 ${q.link}</div>
+                        ${q.type === 'constructed' ? `<div class="quiz-maxscore">Вопросов: ${q.questionCount}</div>` : ''}
                         ${q.type === 'kahoot' ? `<div class="quiz-maxscore">Макс: ${q.maxScore}</div>` : ''}
                         
                         <div class="quiz-actions">
                             ${userRole === 'teacher' || userRole === 'developer' || userIsModerator ? `
                                 ${q.type === 'kahoot' ? 
                                     `<button class="btn btn-teacher" onclick="startQuiz('${key}', '${teacherLink}', '${q.subject}', '${q.title}', ${q.maxScore})">▶️ Запустить</button>` :
+                                    q.type === 'constructed' ?
+                                    `<button class="btn btn-teacher" onclick="startConstructedQuiz('${key}')">▶️ Провести</button>` :
                                     `<a href="${q.link}" target="_blank" class="btn btn-external">🌐 Перейти</a>`
                                 }
                             ` : `
                                 ${q.type === 'kahoot' ? 
                                     `<button class="btn btn-student" onclick="joinQuiz('${key}', '${studentLink}', '${q.subject}', '${q.title}', ${q.maxScore})">🎮 Играть</button>` :
+                                    q.type === 'constructed' ?
+                                    `<button class="btn btn-student" onclick="joinConstructedQuiz('${key}')">🛠️ Играть</button>` :
                                     `<a href="${q.link}" target="_blank" class="btn btn-external">🌐 Перейти</a>`
                                 }
                             `}
@@ -889,18 +458,117 @@ function loadQuizzesBySubject(subject) {
                 `;
             }
             
-            container.innerHTML = html || '<div class="empty-message">В этом разделе пока нет викторин</div>';
+            container.innerHTML = html || '<div class="empty-message">Нет викторин</div>';
         };
         
         processQuizzes();
     });
 }
 
+// Запуск конструкторской викторины
+async function startConstructedQuiz(quizId) {
+    try {
+        const teacherName = userFullName || currentUser.displayName || 'Учитель';
+        
+        // Получаем вопросы
+        const questionsSnap = await db.ref(`questions/${quizId}`).once('value');
+        const questions = questionsSnap.val();
+        
+        if (!questions) {
+            alert('Ошибка: вопросы не найдены');
+            return;
+        }
+        
+        const sessionRef = db.ref('sessions').push();
+        const sessionId = sessionRef.key;
+        
+        const sessionData = {
+            quizId: quizId,
+            quizType: 'constructed',
+            quizSubject: 'constructed',
+            quizTitle: 'constructed',
+            maxScore: Object.keys(questions).length,
+            teacherId: currentUser.uid,
+            teacherName: teacherName,
+            status: 'active',
+            startedAt: Date.now(),
+            students: {}
+        };
+        
+        await sessionRef.set(sessionData);
+        
+        // Сохраняем в teacherSessions
+        await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).set({
+            quizSubject: 'constructed',
+            quizTitle: 'constructed',
+            maxScore: Object.keys(questions).length,
+            status: 'active',
+            startedAt: Date.now(),
+            students: {}
+        });
+        
+        // Открываем панель учителя для конструкторской викторины
+        window.open(`teacher-constructed.html?session=${sessionId}&quiz=${quizId}`, '_blank');
+        
+    } catch (error) {
+        console.error('Ошибка при запуске:', error);
+        alert('Ошибка при запуске викторины');
+    }
+}
+
+// Присоединение к конструкторской викторине
+async function joinConstructedQuiz(quizId) {
+    try {
+        const studentName = userFullName || currentUser.displayName || 'Ученик';
+        if (!studentName) return;
+        
+        const sessionsSnapshot = await db.ref('sessions').orderByChild('quizId').equalTo(quizId).once('value');
+        const sessions = sessionsSnapshot.val();
+        
+        let activeSession = null;
+        let activeSessionId = null;
+        
+        if (sessions) {
+            for (const [key, value] of Object.entries(sessions)) {
+                if (value.status === 'active') {
+                    activeSession = value;
+                    activeSessionId = key;
+                    break;
+                }
+            }
+        }
+        
+        if (!activeSession) {
+            alert('Нет активной викторины');
+            return;
+        }
+        
+        await db.ref(`sessions/${activeSessionId}/students/${currentUser.uid}`).set({
+            name: studentName,
+            email: currentUser.email,
+            joinedAt: Date.now()
+        });
+        
+        await db.ref(`teacherSessions/${activeSession.teacherId}/${activeSessionId}/students/${currentUser.uid}`).set({
+            name: studentName,
+            email: currentUser.email
+        });
+        
+        // Открываем страницу ученика для конструкторской викторины
+        window.open(`student-constructed.html?session=${activeSessionId}&quiz=${quizId}&student=${currentUser.uid}&name=${encodeURIComponent(studentName)}`, '_blank');
+        
+    } catch (error) {
+        console.error('Ошибка при присоединении:', error);
+        alert('Ошибка при присоединении к викторине');
+    }
+}
+
 async function deleteQuiz(quizId) {
     if (!confirm('Удалить викторину?')) return;
     try {
         await db.ref('quizzes/' + quizId).remove();
-        alert('Викторина удалена');
+        // Также удаляем вопросы, если есть
+        await db.ref('questions/' + quizId).remove();
     } catch (error) {
         console.error('Ошибка:', error);
     }
@@ -914,7 +582,65 @@ function selectQuizType(type) {
 }
 
 function toggleForm() {
-    document.getElementById('quizForm').classList.toggle('visible');
+    const form = document.getElementById('quizForm');
+    form.innerHTML = `
+        <h3 style="color: #ffd700; margin-bottom: 20px;">➕ Добавить по ссылке</h3>
+        
+        <div class="form-group">
+            <label>Тип</label>
+            <div class="radio-group" id="quizTypeGroup">
+                <div class="radio-option selected" onclick="selectQuizType('kahoot')" id="type-kahoot">
+                    <input type="radio" name="quizType" value="kahoot" checked> 🎮 Kahoot
+                </div>
+                <div class="radio-option" onclick="selectQuizType('simple')" id="type-simple">
+                    <input type="radio" name="quizType" value="simple"> 📝 Простая
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Класс</label>
+            <select id="quizClass">
+                <option value="5">5 класс</option>
+                <option value="6">6 класс</option>
+                <option value="7">7 класс</option>
+                <option value="8">8 класс</option>
+                <option value="9">9 класс</option>
+                <option value="10">10 класс</option>
+                <option value="11">11 класс</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Предмет</label>
+            <select id="quizSubject">
+                ${allSubjects.map(s => `<option value="${s}">${s}</option>`).join('')}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Название</label>
+            <input type="text" id="quizTitle" placeholder="Conditionals">
+        </div>
+
+        <div class="form-group">
+            <label>Описание</label>
+            <textarea id="quizDescription" rows="3" placeholder="..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Ссылка</label>
+            <input type="url" id="quizLink" placeholder="https://...">
+        </div>
+
+        <div class="form-group" id="maxScoreGroup">
+            <label>Макс. балл</label>
+            <input type="number" id="quizMaxScore" value="15" min="1">
+        </div>
+
+        <button class="submit-quiz" onclick="saveQuiz()">💾 Сохранить</button>
+    `;
+    form.classList.toggle('visible');
 }
 
 async function saveQuiz() {
@@ -932,12 +658,13 @@ async function saveQuiz() {
             return;
         }
 
-        if (type === 'kahoot' && link.includes('ilyasigma111.github.io')) {
-            link = link.replace(/\/$/, '');
-        }
-
         const quizData = {
-            type, class: quizClass, subject, title, description, link,
+            type: type,
+            class: quizClass,
+            subject: subject,
+            title: title,
+            description: description,
+            link: link,
             createdBy: currentUser.uid,
             createdAt: Date.now()
         };
@@ -962,25 +689,29 @@ async function startQuiz(quizId, link, subject, title, maxScore) {
     try {
         const teacherName = userFullName || currentUser.displayName || 'Учитель';
         
-        let folder = '';
-        if (link.includes('ilyasigma111.github.io')) {
-            const match = link.match(/github\.io\/([^\/]+)/);
-            if (match) folder = match[1];
-        }
-        
         const sessionRef = db.ref('sessions').push();
         const sessionId = sessionRef.key;
         
         const sessionData = {
-            quizId, quizFolder: folder, quizSubject: subject, quizTitle: title,
-            maxScore: maxScore || 0, teacherId: currentUser.uid, teacherName,
-            status: 'active', startedAt: Date.now(), students: {}
+            quizId: quizId,
+            quizSubject: subject,
+            quizTitle: title,
+            maxScore: maxScore || 0,
+            teacherId: currentUser.uid,
+            teacherName: teacherName,
+            status: 'active',
+            startedAt: Date.now(),
+            students: {}
         };
         
         await sessionRef.set(sessionData);
         await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).set({
-            quizSubject: subject, quizTitle: title, maxScore: maxScore || 0,
-            status: 'active', startedAt: Date.now(), students: {}
+            quizSubject: subject,
+            quizTitle: title,
+            maxScore: maxScore || 0,
+            status: 'active',
+            startedAt: Date.now(),
+            students: {}
         });
         
         window.open(link, '_blank');
@@ -1016,11 +747,14 @@ async function joinQuiz(quizId, link, subject, title, maxScore) {
         }
         
         await db.ref(`sessions/${activeSessionId}/students/${currentUser.uid}`).set({
-            name: studentName, email: currentUser.email, joinedAt: Date.now()
+            name: studentName,
+            email: currentUser.email,
+            joinedAt: Date.now()
         });
         
         await db.ref(`teacherSessions/${activeSession.teacherId}/${activeSessionId}/students/${currentUser.uid}`).set({
-            name: studentName, email: currentUser.email
+            name: studentName,
+            email: currentUser.email
         });
         
         let url;
@@ -1046,11 +780,11 @@ function loadTeacherSessions() {
         if (!container) return;
         
         if (!sessions) {
-            container.innerHTML = '<div class="empty-state">📭 Нет проведенных викторин</div>';
+            container.innerHTML = '<div class="empty-state">Нет проведенных</div>';
             return;
         }
 
-        let html = '';
+        let html = '<div class="sessions-grid">';
         const sortedIds = Object.keys(sessions).sort((a, b) => {
             return (sessions[b].startedAt || 0) - (sessions[a].startedAt || 0);
         });
@@ -1064,11 +798,11 @@ function loadTeacherSessions() {
             html += `
                 <div class="session-card">
                     <div class="session-preview" onclick="toggleSessionDetails('${sessionId}')">
-                        <div class="session-info">
+                        <div>
                             <div class="session-title">${s.quizSubject} - ${s.quizTitle}</div>
                             <div class="session-meta">
-                                <span class="session-date">📅 ${date}</span>
-                                <span class="session-students">👥 ${studentsCount}</span>
+                                <span>📅 ${date}</span>
+                                <span>👥 ${studentsCount}</span>
                             </div>
                         </div>
                         <div class="session-right">
@@ -1080,38 +814,30 @@ function loadTeacherSessions() {
                     </div>
                     
                     <div id="${sessionId}" class="session-details" style="display: none;">
-                        <div class="students-list">
-                            ${renderStudents(s.students, s.maxScore, id, s.status)}
-                        </div>
+                        ${renderStudents(s.students, s.maxScore, id, s.status)}
                         
                         ${s.status === 'active' ? `
-                            <button class="finish-quiz-btn" onclick="finishQuiz('${id}')">
-                                🏁 Завершить викторину
-                            </button>
+                            <button class="finish-quiz-btn" onclick="finishQuiz('${id}')">🏁 Завершить</button>
                         ` : ''}
                         
                         ${s.status === 'finished' ? `
-                            <button class="save-scores-btn" onclick="saveScores('${id}')">
-                                💾 Сохранить баллы
-                            </button>
+                            <button class="save-scores-btn" onclick="saveScores('${id}')">💾 Сохранить</button>
                         ` : ''}
                     </div>
                 </div>
             `;
         });
         
-        // Опасная зона только для разработчика
         if (userRole === 'developer') {
             html += `
                 <div class="danger-zone">
                     <h3>⚠️ Опасная зона</h3>
-                    <button class="clear-stats-btn" onclick="clearAllStats()">
-                        🗑️ ОЧИСТИТЬ ВСЁ
-                    </button>
+                    <button class="clear-stats-btn" onclick="clearAllStats()">🗑️ ОЧИСТИТЬ ВСЁ</button>
                 </div>
             `;
         }
         
+        html += '</div>';
         container.innerHTML = html;
     });
 }
@@ -1126,11 +852,9 @@ function toggleSessionDetails(sessionId) {
     if (details.style.display === 'none') {
         details.style.display = 'block';
         icon.textContent = '▲';
-        card.classList.add('expanded');
     } else {
         details.style.display = 'none';
         icon.textContent = '▼';
-        card.classList.remove('expanded');
     }
 }
 
@@ -1144,11 +868,10 @@ function renderStudents(students, maxScore, sessionId, status) {
         const student = students[id];
         html += `
             <div class="student-card">
-                <div class="student-name">${student.name || 'Без имени'}</div>
+                <div class="student-name">${student.name}</div>
                 ${status === 'finished' ? 
                     `<input type="number" class="score-input" id="score-${sessionId}-${id}" 
-                            max="${maxScore || 100}" min="0" 
-                            placeholder="0-${maxScore || 100}" value="${student.score || 0}">` :
+                            max="${maxScore}" min="0" value="${student.score || 0}">` :
                     '<div class="student-status">✓ Присоединился</div>'
                 }
             </div>
@@ -1162,13 +885,6 @@ async function finishQuiz(sessionId) {
     try {
         await db.ref(`sessions/${sessionId}`).update({ status: 'finished' });
         await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).update({ status: 'finished' });
-        
-        const session = (await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).once('value')).val();
-        sendTelegramMessage(`
-🎮 <b>Викторина завершена!</b>
-📖 ${session.quizSubject} - ${session.quizTitle}
-👥 Участников: ${Object.keys(session.students || {}).length}
-        `);
     } catch (error) {
         console.error('Ошибка:', error);
     }
@@ -1194,20 +910,22 @@ async function saveScores(sessionId) {
             
             const resultId = `${sessionId}_${studentId}`;
             await db.ref('results/' + resultId).set({
-                studentId, studentName: session.students[studentId].name,
-                quizSubject: session.quizSubject, quizTitle: session.quizTitle,
-                score, maxScore: session.maxScore || 0,
-                teacherId: currentUser.uid, sessionId, date: Date.now()
+                studentId: studentId,
+                studentName: session.students[studentId].name,
+                quizSubject: session.quizSubject,
+                quizTitle: session.quizTitle,
+                score: score,
+                maxScore: session.maxScore,
+                teacherId: currentUser.uid,
+                sessionId: sessionId,
+                date: Date.now()
             });
             
-            await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}/students/${studentId}`).update({ score });
+            await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}/students/${studentId}`).update({ score: score });
             count++;
         }
         
         alert(`✅ Сохранено ${count} результатов`);
-        
-        const stats = await getFullStats();
-        sendTelegramMessage(stats);
     } catch (error) {
         console.error('Ошибка:', error);
     }
@@ -1231,17 +949,13 @@ async function clearAllStats() {
             return;
         }
         
-        const total = Object.keys(results).length;
         let count = 0;
-        
         for (const key of Object.keys(results)) {
             await db.ref('results/' + key).remove();
             count++;
         }
         
         alert(`✅ Удалено ${count} результатов`);
-        sendTelegramMessage(`🧹 <b>Очистка статистики</b>\nУдалено ${count} результатов`);
-        
         window.location.reload();
     } catch (error) {
         console.error('Ошибка:', error);
@@ -1255,7 +969,7 @@ function loadStudentResults() {
         if (!container) return;
         
         if (!results) {
-            container.innerHTML = '<div class="empty-state">📭 У вас пока нет результатов</div>';
+            container.innerHTML = '<div class="empty-state">Нет результатов</div>';
             return;
         }
 
@@ -1272,7 +986,7 @@ function loadStudentResults() {
                 <div class="result-card">
                     <div class="result-subject">${r.quizSubject}</div>
                     <div class="result-title">${r.quizTitle}</div>
-                    <div class="result-score">${r.score || 0}/${r.maxScore || 0}</div>
+                    <div class="result-score">${r.score}/${r.maxScore}</div>
                     <div class="result-date">${date}</div>
                 </div>
             `;
@@ -1282,29 +996,373 @@ function loadStudentResults() {
     });
 }
 
-// ===== ЗАПУСК TELEGRAM БОТА (ТОЛЬКО ОДИН РАЗ) =====
-let botInitialized = false;
+// ===== TELEGRAM ФУНКЦИИ =====
+async function sendTelegramMessage(text, chatId = TELEGRAM_CHAT_ID) {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    
+    try {
+        await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: chatId,
+                text: text,
+                parse_mode: 'HTML'
+            })
+        });
+    } catch (error) {
+        console.error('Ошибка отправки в Telegram:', error);
+    }
+}
 
-setTimeout(() => {
-    if (!botInitialized) {
-        botInitialized = true;
-        getTelegramUpdates();
+async function getTelegramUpdates() {
+    try {
+        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=10`;
+        const response = await fetch(url);
+        const data = await response.json();
         
-        // Отправляем приветствие только один раз
-        sendTelegramMessage(`
-🚀 <b>ИЛЬЯКЛАСС ЗАПУЩЕН!</b>
+        if (data.ok && data.result.length > 0) {
+            for (const update of data.result) {
+                if (processedUpdates.has(update.update_id)) continue;
+                
+                lastUpdateId = update.update_id;
+                processedUpdates.add(update.update_id);
+                
+                if (processedUpdates.size > 100) {
+                    const iterator = processedUpdates.values();
+                    processedUpdates.delete(iterator.next().value);
+                }
+                
+                if (update.message && update.message.text) {
+                    const chatId = update.message.chat.id;
+                    const text = update.message.text.trim();
+                    await handleTelegramCommand(text, chatId);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка получения обновлений:', error);
+    }
+    
+    if (pollingActive) {
+        setTimeout(getTelegramUpdates, 2000);
+    }
+}
 
-Бот готов к работе.
-Напишите /help для списка команд.
-        `);
+async function handleTelegramCommand(command, chatId) {
+    let response = '';
+    
+    switch(command) {
+        case '/start':
+            response = `
+🚀 <b>Добро пожаловать в бота ИЛЬЯКЛАСС!</b>
+
+📊 <b>Доступные команды:</b>
+
+/stats - Полная статистика
+/teachers - Список учителей
+/students - Список учеников
+/moderators - Список модераторов
+/quizzes - Все викторины
+/results - Все результаты
+/top - Топ учеников
+/active - Активные викторины
+/help - Помощь
+            `;
+            break;
+            
+        case '/help':
+            response = `
+📚 <b>Помощь по командам:</b>
+
+/stats - общая статистика
+/teachers - список учителей
+/students - список учеников
+/moderators - список модераторов
+/quizzes - статистика викторин
+/results - статистика результатов
+/top - топ учеников
+/active - активные викторины
+            `;
+            break;
+            
+        case '/stats':
+            response = await getFullStats();
+            break;
+            
+        case '/teachers':
+            response = await getTeachersList();
+            break;
+            
+        case '/students':
+            response = await getStudentsList();
+            break;
+            
+        case '/moderators':
+            response = await getModeratorsList();
+            break;
+            
+        case '/quizzes':
+            response = await getQuizzesList();
+            break;
+            
+        case '/results':
+            response = await getResultsStats();
+            break;
+            
+        case '/top':
+            response = await getTopStudents();
+            break;
+            
+        case '/active':
+            response = await getActiveQuizzes();
+            break;
+            
+        default:
+            if (command.startsWith('/')) {
+                response = '❌ Неизвестная команда. Напишите /help';
+            }
+    }
+    
+    if (response) {
+        await sendTelegramMessage(response, chatId);
+    }
+}
+
+async function getFullStats() {
+    try {
+        const [usersSnap, resultsSnap, sessionsSnap, quizzesSnap, simpleUsersSnap] = await Promise.all([
+            db.ref('users').once('value'),
+            db.ref('results').once('value'),
+            db.ref('sessions').once('value'),
+            db.ref('quizzes').once('value'),
+            db.ref('simple_users').once('value')
+        ]);
+        
+        const googleUsers = usersSnap.val() || {};
+        const simpleUsers = simpleUsersSnap.val() || {};
+        const results = resultsSnap.val() || {};
+        const sessions = sessionsSnap.val() || {};
+        const quizzes = quizzesSnap.val() || {};
+        
+        let developers = 0, moderators = 0, teachers = 0, students = 0;
+        
+        // Считаем Google пользователей
+        Object.values(googleUsers).forEach(u => {
+            if (u.role === 'developer') developers++;
+            else if (u.isModerator) moderators++;
+            else if (u.role === 'teacher') teachers++;
+            else if (u.role === 'student') students++;
+        });
+        
+        // Считаем Simple пользователей
+        Object.values(simpleUsers).forEach(u => {
+            if (u.role === 'developer') developers++;
+            else if (u.isModerator) moderators++;
+            else if (u.role === 'teacher') teachers++;
+            else if (u.role === 'student') students++;
+        });
+        
+        const totalSessions = Object.keys(sessions).length;
+        const activeSessions = Object.values(sessions).filter(s => s.status === 'active').length;
+        const totalResults = Object.keys(results).length;
+        const totalQuizzes = Object.keys(quizzes).length;
+        
+        let totalScore = 0;
+        Object.values(results).forEach(r => totalScore += r.score || 0);
+        const avgScore = totalResults > 0 ? (totalScore / totalResults).toFixed(1) : 0;
+        
+        return `
+📊 <b>ПОЛНАЯ СТАТИСТИКА</b>
+
+👥 <b>Пользователи:</b>
+• Разработчиков: ${developers}
+• Модераторов: ${moderators}
+• Учителей: ${teachers}
+• Учеников: ${students}
+• Всего: ${developers + moderators + teachers + students}
+
+📚 <b>Викторины:</b>
+• Всего: ${totalQuizzes}
+• Проведено: ${totalSessions}
+• Активных: ${activeSessions}
+
+📝 <b>Результаты:</b>
+• Всего: ${totalResults}
+• Средний балл: ${avgScore}
+• Сумма баллов: ${totalScore}
+        `;
+    } catch (error) {
+        return '❌ Ошибка получения статистики';
+    }
+}
+
+async function getModeratorsList() {
+    const [googleSnap, simpleSnap] = await Promise.all([
+        db.ref('users').once('value'),
+        db.ref('simple_users').once('value')
+    ]);
+    
+    const googleUsers = googleSnap.val() || {};
+    const simpleUsers = simpleSnap.val() || {};
+    
+    let moderators = [];
+    
+    Object.values(googleUsers).forEach(u => {
+        if (u.isModerator) {
+            moderators.push(`🛡️ ${cleanDisplayName(u.fullName || u.googleName)} (Google)`);
+        }
+    });
+    
+    Object.values(simpleUsers).forEach(u => {
+        if (u.isModerator) {
+            moderators.push(`🛡️ ${u.username}`);
+        }
+    });
+    
+    return moderators.length > 0 
+        ? `🛡️ <b>Модераторы (${moderators.length}):</b>\n\n${moderators.join('\n')}`
+        : '🛡️ Модераторов пока нет';
+}
+
+async function getTeachersList() {
+    const [googleSnap, simpleSnap] = await Promise.all([
+        db.ref('users').once('value'),
+        db.ref('simple_users').once('value')
+    ]);
+    
+    const googleUsers = googleSnap.val() || {};
+    const simpleUsers = simpleSnap.val() || {};
+    
+    let teachers = [];
+    
+    Object.values(googleUsers).forEach(u => {
+        if (u.role === 'teacher' && !u.isModerator) {
+            teachers.push(`• ${cleanDisplayName(u.fullName || u.googleName)}`);
+        }
+    });
+    
+    Object.values(simpleUsers).forEach(u => {
+        if (u.role === 'teacher' && !u.isModerator) {
+            teachers.push(`• ${u.username}`);
+        }
+    });
+    
+    return teachers.length > 0 
+        ? `👨‍🏫 <b>Учителя (${teachers.length}):</b>\n\n${teachers.join('\n')}`
+        : '👨‍🏫 Учителей пока нет';
+}
+
+async function getStudentsList() {
+    const [googleSnap, simpleSnap] = await Promise.all([
+        db.ref('users').once('value'),
+        db.ref('simple_users').once('value')
+    ]);
+    
+    const googleUsers = googleSnap.val() || {};
+    const simpleUsers = simpleSnap.val() || {};
+    
+    let students = [];
+    
+    Object.values(googleUsers).forEach(u => {
+        if (u.role === 'student' && !u.isModerator) {
+            students.push(`• ${cleanDisplayName(u.fullName || u.googleName)}`);
+        }
+    });
+    
+    Object.values(simpleUsers).forEach(u => {
+        if (u.role === 'student' && !u.isModerator) {
+            students.push(`• ${u.username}`);
+        }
+    });
+    
+    return students.length > 0 
+        ? `👨‍🎓 <b>Ученики (${students.length}):</b>\n\n${students.join('\n')}`
+        : '👨‍🎓 Учеников пока нет';
+}
+
+async function getQuizzesList() {
+    const quizzesSnap = await db.ref('quizzes').once('value');
+    const quizzes = quizzesSnap.val() || {};
+    
+    let bySubject = {};
+    Object.values(quizzes).forEach(q => {
+        bySubject[q.subject] = (bySubject[q.subject] || 0) + 1;
+    });
+    
+    let subjects = Object.entries(bySubject)
+        .map(([s, c]) => `• ${s}: ${c}`)
+        .join('\n');
+    
+    return `
+📚 <b>Викторины:</b>
+• Всего: ${Object.keys(quizzes).length}
+
+<b>По предметам:</b>
+${subjects}
+    `;
+}
+
+async function getResultsStats() {
+    const resultsSnap = await db.ref('results').once('value');
+    const results = resultsSnap.val() || {};
+    
+    let totalScore = 0;
+    Object.values(results).forEach(r => totalScore += r.score || 0);
+    
+    return `
+📝 <b>Результаты:</b>
+• Всего: ${Object.keys(results).length}
+• Сумма баллов: ${totalScore}
+    `;
+}
+
+async function getTopStudents() {
+    const resultsSnap = await db.ref('results').once('value');
+    const results = resultsSnap.val() || {};
+    
+    let studentScores = {};
+    Object.values(results).forEach(r => {
+        if (!studentScores[r.studentName]) {
+            studentScores[r.studentName] = { total: 0, count: 0 };
+        }
+        studentScores[r.studentName].total += r.score || 0;
+        studentScores[r.studentName].count++;
+    });
+    
+    let top = Object.entries(studentScores)
+        .map(([name, data]) => ({ 
+            name: cleanDisplayName(name), 
+            total: data.total 
+        }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 10)
+        .map((s, i) => `${i+1}. ${s.name} — ${s.total} баллов`)
+        .join('\n');
+    
+    return `🏆 <b>Топ учеников:</b>\n\n${top || 'Нет данных'}`;
+}
+
+async function getActiveQuizzes() {
+    const sessionsSnap = await db.ref('sessions').once('value');
+    const sessions = sessionsSnap.val() || {};
+    
+    let active = [];
+    Object.entries(sessions).forEach(([id, s]) => {
+        if (s.status === 'active') {
+            active.push(`• ${s.quizSubject} - ${s.quizTitle}\n  👥 ${Object.keys(s.students || {}).length} учеников`);
+        }
+    });
+    
+    return active.length > 0
+        ? `🟢 <b>Активные (${active.length}):</b>\n\n${active.join('\n\n')}`
+        : '🟢 Активных викторин нет';
+}
+
+// ===== ЗАПУСК БОТА =====
+setTimeout(() => {
+    if (!botStarted) {
+        botStarted = true;
+        getTelegramUpdates();
     }
 }, 3000);
-
-// Ежедневная статистика (проверяем каждый час, отправляем только в 20:00)
-setInterval(async () => {
-    const now = new Date();
-    if (now.getHours() === 20 && now.getMinutes() === 0) {
-        const stats = await getFullStats();
-        sendTelegramMessage(stats);
-    }
-}, 60000);
