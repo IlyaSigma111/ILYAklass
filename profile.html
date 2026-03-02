@@ -33,8 +33,8 @@
     </main>
 
     <script src="firebase.js"></script>
+    <script src="auth.js"></script>
     <script>
-        // Переключение темы
         function toggleTheme() {
             const body = document.body;
             const themeBtn = document.getElementById('themeToggle');
@@ -52,7 +52,6 @@
             }
         }
 
-        // Загружаем сохраненную тему
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'dark') {
             document.body.classList.remove('light-theme');
@@ -101,16 +100,14 @@
                 try {
                     await loadProfileSubjects();
                     
-                    const userRef = db.ref('users/' + user.uid);
-                    const snapshot = await userRef.once('value');
-                    const userData = snapshot.val();
+                    const simpleUser = getCurrentSimpleUser();
                     
-                    if (userData) {
-                        userRole = userData.role;
-                        userFullName = userData.fullName || user.displayName;
-                        userIsModerator = userData.isModerator || false;
+                    if (simpleUser) {
+                        userRole = simpleUser.role;
+                        userFullName = simpleUser.fullName || simpleUser.username;
+                        userIsModerator = simpleUser.isModerator || false;
                         
-                        const isDeveloper = user.email === DEVELOPER_EMAIL;
+                        const isDeveloper = userRole === 'developer';
                         
                         let roleText = '';
                         let roleClass = '';
@@ -128,7 +125,7 @@
                         
                         document.getElementById('userSection').innerHTML = `
                             <div class="user-card">
-                                <img src="${user.photoURL}" class="avatar">
+                                <img src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y" class="avatar">
                                 <div class="user-info">
                                     <span class="user-name">${cleanDisplayName(userFullName)}</span>
                                     <span class="user-role ${roleClass}">${roleText}</span>
@@ -137,13 +134,52 @@
                             </div>
                         `;
                         
-                        if (userRole === 'teacher' && userData.subjects) {
-                            teacherSubjects = userData.subjects;
-                        }
-                        
-                        loadProfileContent(user, userData);
+                        loadProfileContent(simpleUser);
                     } else {
-                        window.location.href = 'index.html';
+                        const userRef = db.ref('users/' + user.uid);
+                        const snapshot = await userRef.once('value');
+                        const userData = snapshot.val();
+                        
+                        if (userData) {
+                            userRole = userData.role;
+                            userFullName = userData.fullName || user.displayName;
+                            userIsModerator = userData.isModerator || false;
+                            
+                            const isDeveloper = user.email === DEVELOPER_EMAIL;
+                            
+                            let roleText = '';
+                            let roleClass = '';
+                            
+                            if (isDeveloper) {
+                                roleText = '👑 Разработчик';
+                                roleClass = 'developer';
+                            } else if (userIsModerator) {
+                                roleText = '🛡️ Модератор';
+                                roleClass = 'moderator';
+                            } else {
+                                roleText = userRole === 'teacher' ? '👨‍🏫 Учитель' : '👨‍🎓 Ученик';
+                                roleClass = userRole === 'teacher' ? 'teacher' : 'student';
+                            }
+                            
+                            document.getElementById('userSection').innerHTML = `
+                                <div class="user-card">
+                                    <img src="${user.photoURL}" class="avatar">
+                                    <div class="user-info">
+                                        <span class="user-name">${cleanDisplayName(userFullName)}</span>
+                                        <span class="user-role ${roleClass}">${roleText}</span>
+                                    </div>
+                                    <button onclick="signOut()" class="logout-btn">Выйти</button>
+                                </div>
+                            `;
+                            
+                            if (userRole === 'teacher' && userData.subjects) {
+                                teacherSubjects = userData.subjects;
+                            }
+                            
+                            loadProfileContent(user, userData);
+                        } else {
+                            window.location.href = 'index.html';
+                        }
                     }
                 } catch (error) {
                     console.error('Ошибка:', error);
@@ -154,14 +190,18 @@
         });
 
         function signOut() {
-            auth.signOut();
+            if (getCurrentSimpleUser()) {
+                localStorage.removeItem('currentSimpleUser');
+            } else {
+                auth.signOut();
+            }
             window.location.href = 'index.html';
         }
         
-        function loadProfileContent(user, userData) {
+        function loadProfileContent(user, userData = null) {
             const content = document.getElementById('content');
             
-            const isDeveloper = user.email === DEVELOPER_EMAIL;
+            const isDeveloper = userRole === 'developer';
             
             let roleText = '';
             let roleClass = '';
@@ -178,13 +218,14 @@
             }
             
             const showAllSubjects = localStorage.getItem('showAllSubjects') === 'true';
+            const avatar = user.photoURL || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
             
             content.innerHTML = `
                 <div class="profile-container">
                     <div class="profile-sidebar">
-                        <img src="${user.photoURL}" class="profile-avatar">
+                        <img src="${avatar}" class="profile-avatar">
                         <div class="profile-name">${cleanDisplayName(userFullName)}</div>
-                        <div class="profile-email">${user.email}</div>
+                        <div class="profile-email">${user.email || 'local@user'}</div>
                         <div class="profile-role ${roleClass}">${roleText}</div>
                         
                         ${userRole === 'teacher' || isDeveloper || userIsModerator ? `
@@ -295,9 +336,21 @@
             }
             
             try {
-                await db.ref('users/' + currentUser.uid).update({
-                    fullName: newName
-                });
+                const simpleUser = getCurrentSimpleUser();
+                if (simpleUser) {
+                    await db.ref('simple_users/' + simpleUser.id).update({
+                        fullName: newName,
+                        username: newName
+                    });
+                    
+                    simpleUser.fullName = newName;
+                    simpleUser.username = newName;
+                    localStorage.setItem('currentSimpleUser', JSON.stringify(simpleUser));
+                } else {
+                    await db.ref('users/' + currentUser.uid).update({
+                        fullName: newName
+                    });
+                }
                 
                 alert('Имя сохранено!');
                 window.location.reload();
@@ -312,9 +365,16 @@
             const subjects = Array.from(checkboxes).map(cb => cb.value);
             
             try {
-                await db.ref('users/' + currentUser.uid).update({
-                    subjects: subjects
-                });
+                const simpleUser = getCurrentSimpleUser();
+                if (simpleUser) {
+                    await db.ref('simple_users/' + simpleUser.id).update({
+                        subjects: subjects
+                    });
+                } else {
+                    await db.ref('users/' + currentUser.uid).update({
+                        subjects: subjects
+                    });
+                }
                 
                 alert('Предметы сохранены!');
             } catch (error) {
