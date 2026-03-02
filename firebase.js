@@ -14,3 +14,25 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
 const provider = new firebase.auth.GoogleAuthProvider();
+
+// Глобальные переменные
+let currentUser = null;
+let userRole = null;
+let userFullName = null;
+let userIsModerator = false;
+let teacherSubjects = [];
+let selectedSubject = 'all';
+let quizType = 'kahoot';
+let allSubjects = [];
+
+// Функция для очистки имени от модераторских скобок
+function cleanDisplayName(name) {
+    if (!name) return name;
+    return name.replace(/\s*\(\d+\)$/, '');
+}
+
+// Функция для проверки, является ли пользователь модератором
+function checkIfModerator(name) {
+    if (!name) return false;
+    return /\s*\(\d+\)$/.test(name);
+}
