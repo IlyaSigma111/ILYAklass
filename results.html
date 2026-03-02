@@ -11,7 +11,7 @@
 </head>
 <body>
     <header class="header">
-        <div style="display: flex; align-items: center; gap: 30px;">
+        <div class="header-left">
             <div class="logo" onclick="window.location='index.html'">
                 <span class="logo-il">ИЛЬ</span>
                 <span class="logo-yaclass">ЯКЛАСС</span>
@@ -21,9 +21,11 @@
                 <a href="results.html" class="nav-link active">Результаты</a>
                 <a href="profile.html" class="nav-link">Профиль</a>
             </nav>
-            <button class="theme-btn" onclick="toggleTheme()" id="themeToggle">🌙 Темная</button>
         </div>
-        <div id="userSection"></div>
+        <div class="header-right">
+            <button class="theme-btn" onclick="toggleTheme()" id="themeToggle">🌙 Темная</button>
+            <div id="userSection"></div>
+        </div>
     </header>
 
     <main class="main-container">
@@ -31,8 +33,8 @@
     </main>
 
     <script src="firebase.js"></script>
+    <script src="auth.js"></script>
     <script>
-        // Переключение темы
         function toggleTheme() {
             const body = document.body;
             const themeBtn = document.getElementById('themeToggle');
@@ -60,6 +62,7 @@
         let currentUser = null;
         let userRole = null;
         let userFullName = null;
+        let userIsModerator = false;
         let allResults = [];
         let allQuizzes = [];
         let allStudents = [];
@@ -68,53 +71,84 @@
             if (user) {
                 currentUser = user;
                 
-                const userRef = db.ref('users/' + user.uid);
-                const snapshot = await userRef.once('value');
-                const userData = snapshot.val();
-                
-                if (userData) {
-                    userRole = userData.role;
-                    userFullName = userData.fullName || user.displayName;
+                const simpleUser = getCurrentSimpleUser();
+                if (simpleUser) {
+                    userRole = simpleUser.role;
+                    userFullName = simpleUser.fullName || simpleUser.username;
+                    userIsModerator = simpleUser.isModerator || false;
+                    
+                    document.getElementById('userSection').innerHTML = `
+                        <div class="user-card">
+                            <img src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y" class="avatar">
+                            <div class="user-info">
+                                <span class="user-name">${userFullName}</span>
+                                <span class="user-role ${userRole === 'developer' ? 'developer' : (userIsModerator ? 'moderator' : (userRole === 'teacher' ? 'teacher' : 'student'))}">
+                                    ${userRole === 'developer' ? '👑 Разработчик' : (userIsModerator ? '🛡️ Модератор' : (userRole === 'teacher' ? '👨‍🏫 Учитель' : '👨‍🎓 Ученик'))}
+                                </span>
+                            </div>
+                            <button onclick="signOut()" class="logout-btn">Выйти</button>
+                        </div>
+                    `;
+                } else {
+                    const userRef = db.ref('users/' + user.uid);
+                    const snapshot = await userRef.once('value');
+                    const userData = snapshot.val();
+                    
+                    if (userData) {
+                        userRole = userData.role;
+                        userFullName = userData.fullName || user.displayName;
+                        userIsModerator = userData.isModerator || false;
+                    }
                     
                     document.getElementById('userSection').innerHTML = `
                         <div class="user-card">
                             <img src="${user.photoURL}" class="avatar">
-                            <span style="font-weight: 500;">${userFullName}</span>
-                            <span class="role-badge">${userRole === 'teacher' ? 'Учитель' : 'Ученик'}</span>
+                            <div class="user-info">
+                                <span class="user-name">${userFullName || user.displayName}</span>
+                                <span class="user-role ${userRole === 'developer' ? 'developer' : (userIsModerator ? 'moderator' : (userRole === 'teacher' ? 'teacher' : 'student'))}">
+                                    ${userRole === 'developer' ? '👑 Разработчик' : (userIsModerator ? '🛡️ Модератор' : (userRole === 'teacher' ? '👨‍🏫 Учитель' : '👨‍🎓 Ученик'))}
+                                </span>
+                            </div>
                             <button onclick="signOut()" class="logout-btn">Выйти</button>
                         </div>
                     `;
-                    
-                    loadResults();
-                } else {
-                    window.location.href = 'index.html';
                 }
+                
+                loadResults();
             } else {
                 window.location.href = 'index.html';
             }
         });
 
         function signOut() {
-            auth.signOut();
+            if (getCurrentSimpleUser()) {
+                localStorage.removeItem('currentSimpleUser');
+            } else {
+                auth.signOut();
+            }
             window.location.href = 'index.html';
         }
 
         async function loadResults() {
             const content = document.getElementById('content');
             
-            const resultsSnap = await db.ref('results').once('value');
-            const quizzesSnap = await db.ref('quizzes').once('value');
-            const usersSnap = await db.ref('users').once('value');
+            const [resultsSnap, quizzesSnap, usersSnap, simpleUsersSnap] = await Promise.all([
+                db.ref('results').once('value'),
+                db.ref('quizzes').once('value'),
+                db.ref('users').once('value'),
+                db.ref('simple_users').once('value')
+            ]);
             
             const results = resultsSnap.val();
             const quizzes = quizzesSnap.val();
-            const users = usersSnap.val();
+            const googleUsers = usersSnap.val() || {};
+            const simpleUsers = simpleUsersSnap.val() || {};
             
             if (!results) {
                 content.innerHTML = `
                     <div class="results-container">
-                        <h2 style="color: #4CAF50; text-align: center;">📊 Результаты</h2>
-                        <p style="text-align: center; color: #666; margin-top: 30px;">Пока нет результатов</p>
+                        <h2 style="color: #ffd700; text-align: center;">📊 Результаты</h2>
+                        <p style="text-align: center; color: rgba(255,255,255,0.7); margin-top: 30px;">Пока нет результатов</p>
                     </div>
                 `;
                 return;
@@ -122,11 +156,19 @@
 
             allResults = Object.entries(results).map(([id, data]) => ({ id, ...data }));
             allQuizzes = quizzes ? Object.entries(quizzes).map(([id, data]) => ({ id, ...data })) : [];
-            allStudents = users ? Object.entries(users).map(([id, data]) => ({ id, ...data })) : [];
+            
+            // Собираем всех пользователей
+            allStudents = [];
+            Object.entries(googleUsers).forEach(([id, data]) => {
+                allStudents.push({ id, ...data, source: 'google' });
+            });
+            Object.entries(simpleUsers).forEach(([id, data]) => {
+                allStudents.push({ id, ...data, source: 'simple' });
+            });
 
             allResults.sort((a, b) => (b.date || 0) - (a.date || 0));
 
-            if (userRole === 'teacher') {
+            if (userRole === 'teacher' || userRole === 'developer' || userIsModerator) {
                 renderTeacherResults();
             } else {
                 renderStudentResults();
@@ -145,7 +187,7 @@
             
             content.innerHTML = `
                 <div class="results-container">
-                    <h2 style="color: #4CAF50; margin-bottom: 30px;">📊 Все результаты</h2>
+                    <h2 style="color: #ffd700; margin-bottom: 30px;">📊 Все результаты</h2>
                     
                     <div class="stats-cards">
                         <div class="stat-card">
@@ -181,7 +223,7 @@
                         
                         <select class="filter-select" id="studentFilter" onchange="filterResults()">
                             <option value="all">Все ученики</option>
-                            ${allStudents.map(s => `<option value="${s.id}">${s.fullName || s.googleName}</option>`).join('')}
+                            ${allStudents.map(s => `<option value="${s.id}">${s.fullName || s.username || s.googleName}</option>`).join('')}
                         </select>
                     </div>
                     
@@ -215,7 +257,7 @@
             
             content.innerHTML = `
                 <div class="results-container">
-                    <h2 style="color: #4CAF50; margin-bottom: 30px;">📊 Мои результаты</h2>
+                    <h2 style="color: #ffd700; margin-bottom: 30px;">📊 Мои результаты</h2>
                     
                     <div class="stats-cards">
                         <div class="stat-card">
@@ -255,7 +297,7 @@
                         </table>
                     </div>
                     
-                    ${myResults.length === 0 ? '<p style="text-align: center; color: #666; margin-top: 30px;">У вас пока нет результатов</p>' : ''}
+                    ${myResults.length === 0 ? '<p style="text-align: center; color: rgba(255,255,255,0.7); margin-top: 30px;">У вас пока нет результатов</p>' : ''}
                 </div>
             `;
         }
@@ -263,7 +305,7 @@
         function renderResultsRows(results) {
             return results.map(r => {
                 const student = allStudents.find(s => s.id === r.studentId);
-                const studentName = student ? (student.fullName || student.googleName) : 'Неизвестный ученик';
+                const studentName = student ? (student.fullName || student.username || student.googleName) : 'Неизвестный ученик';
                 
                 return `
                     <tr>
@@ -303,7 +345,7 @@
             const headers = ['Ученик', 'Предмет', 'Викторина', 'Баллы', 'Макс. балл', 'Дата'];
             const rows = allResults.map(r => {
                 const student = allStudents.find(s => s.id === r.studentId);
-                const studentName = student ? (student.fullName || student.googleName) : 'Неизвестный ученик';
+                const studentName = student ? (student.fullName || student.username || student.googleName) : 'Неизвестный ученик';
                 
                 return [
                     studentName,
