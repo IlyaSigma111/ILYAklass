@@ -33,7 +33,6 @@ async function registerUser() {
     }
 
     try {
-        // Проверяем, существует ли уже такой пользователь
         const usersSnap = await db.ref('simple_users').once('value');
         const users = usersSnap.val() || {};
         
@@ -50,7 +49,6 @@ async function registerUser() {
             return;
         }
 
-        // Проверяем на модератора (скобки с цифрой)
         const isModerator = /\s*\(\d+\)$/.test(username);
         const isDeveloper = username.toLowerCase() === 'илья' || username.toLowerCase() === 'ilya';
         
@@ -68,7 +66,6 @@ async function registerUser() {
 
         await newUserRef.set(userData);
 
-        // Автоматически входим
         localStorage.setItem('currentSimpleUser', JSON.stringify({
             id: userId,
             username: username,
@@ -122,7 +119,6 @@ async function simpleLogin() {
             return;
         }
 
-        // Сохраняем в localStorage
         localStorage.setItem('currentSimpleUser', JSON.stringify({
             id: userId,
             username: foundUser.username,
