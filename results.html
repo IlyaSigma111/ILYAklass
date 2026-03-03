@@ -9,213 +9,73 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
-        /* ЖЕСТКИЕ СТИЛИ ПРЯМО В ФАЙЛЕ */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
         body {
-            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%) !important;
-            color: white !important;
+            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
             min-height: 100vh;
-            position: relative;
         }
-
         body.light-theme {
-            background: linear-gradient(145deg, #667eea 0%, #764ba2 100%) !important;
-            color: #1a1a2e !important;
+            background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
+            color: #1a1a2e;
         }
-
         .header {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255,255,255,0.1);
             backdrop-filter: blur(16px);
-            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+            border-bottom: 1px solid rgba(255,215,0,0.3);
             padding: 12px 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
         }
-
-        .logo {
-            font-size: 32px;
-            font-weight: 900;
-            cursor: pointer;
-        }
-
-        .logo-il {
-            color: #ffd700;
-        }
-
-        .logo-yaclass {
-            color: #00ffff;
-        }
-
-        .nav-menu {
-            display: flex;
-            gap: 10px;
-        }
-
+        .logo { font-size: 32px; font-weight: 900; cursor: pointer; }
+        .logo-il { color: #ffd700; }
+        .logo-yaclass { color: #00ffff; }
+        .nav-menu { display: flex; gap: 10px; }
         .nav-link {
             padding: 8px 20px;
             border-radius: 40px;
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255,255,255,0.15);
             color: white;
             text-decoration: none;
-            font-weight: 600;
         }
-
-        .nav-link.active {
-            background: rgba(255, 215, 0, 0.3);
-        }
-
-        .user-card {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            background: rgba(255, 255, 255, 0.15);
-            padding: 5px 15px 5px 5px;
-            border-radius: 50px;
-        }
-
-        .avatar {
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            border: 2px solid #ffd700;
-            object-fit: cover;
-        }
-
-        .logout-btn, .theme-btn {
-            padding: 8px 20px;
-            border-radius: 40px;
-            background: rgba(255, 255, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            cursor: pointer;
-        }
-
-        .main-container {
-            max-width: 1400px;
-            margin: 25px auto;
-            padding: 0 20px;
-        }
-
+        .nav-link.active { background: rgba(255,215,0,0.3); }
+        .main-container { max-width: 1400px; margin: 25px auto; padding: 0 20px; }
         .results-container {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255,255,255,0.1);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 215, 0, 0.3);
+            border: 1px solid rgba(255,215,0,0.3);
             border-radius: 30px;
             padding: 30px;
-            color: white;
         }
-
         .stats-cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
             gap: 20px;
             margin: 25px 0;
         }
-
         .stat-card {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 215, 0, 0.3);
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,215,0,0.3);
             border-radius: 20px;
             padding: 20px;
             text-align: center;
         }
-
-        .stat-value {
-            font-size: 32px;
-            font-weight: 700;
-            color: #ffd700;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 13px;
-        }
-
-        .results-filters {
-            display: flex;
-            gap: 15px;
-            margin: 20px 0;
-            flex-wrap: wrap;
-        }
-
-        .filter-select {
-            padding: 10px 20px;
-            border-radius: 25px;
-            border: 1px solid rgba(255, 215, 0, 0.3);
-            background: rgba(0, 0, 0, 0.2);
-            color: white;
-            font-size: 14px;
-            min-width: 200px;
-            flex: 1;
-        }
-
-        .filter-select option {
-            background: #1a1a2e;
-            color: white;
-        }
-
-        .export-btn {
-            background: rgba(255, 215, 0, 0.2);
-            border: 1px solid #ffd700;
-            color: #ffd700;
-            padding: 12px 25px;
-            border-radius: 25px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
-
+        .stat-value { font-size: 32px; font-weight: 700; color: #ffd700; }
         .results-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 14px;
-            color: white;
         }
-
         .results-table th {
-            background: rgba(255, 215, 0, 0.2);
+            background: rgba(255,215,0,0.2);
             padding: 15px;
             text-align: left;
-            font-weight: 600;
-            border: 1px solid rgba(255, 215, 0, 0.3);
             color: white;
         }
-
         .results-table td {
             padding: 12px 15px;
-            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-bottom: 1px solid rgba(255,215,0,0.2);
             color: white;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 60px;
-            color: white;
-            font-size: 18px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 30px;
-        }
-
-        @media (max-width: 768px) {
-            .results-filters {
-                flex-direction: column;
-            }
-            .filter-select {
-                width: 100%;
-            }
         }
     </style>
 </head>
@@ -248,7 +108,6 @@
         function toggleTheme() {
             const body = document.body;
             const themeBtn = document.getElementById('themeToggle');
-            
             if (body.classList.contains('dark-theme')) {
                 body.classList.remove('dark-theme');
                 body.classList.add('light-theme');
@@ -266,51 +125,33 @@
         document.body.className = savedTheme + '-theme';
         document.getElementById('themeToggle').textContent = savedTheme === 'dark' ? '☀️ Светлая' : '🌙 Темная';
 
-        // Локальная заглушка для аватара (без Gravatar)
-        const defaultAvatar = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\' viewBox=\'0 0 100 100\'%3E%3Ccircle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%23333\' stroke=\'%23ffd700\' stroke-width=\'2\'/%3E%3Ctext x=\'50\' y=\'67\' font-size=\'40\' text-anchor=\'middle\' fill=\'%23ffd700\' font-family=\'Arial\'%3E👤%3C/text%3E%3C/svg%3E';
-
         auth.onAuthStateChanged(async (user) => {
             if (user) {
                 currentUser = user;
-                
                 const simpleUser = getCurrentSimpleUser();
+                
                 if (simpleUser) {
                     userRole = simpleUser.role;
                     userFullName = simpleUser.fullName || simpleUser.username;
                     userIsModerator = simpleUser.isModerator || false;
-                    
                     document.getElementById('userSection').innerHTML = `
                         <div class="user-card">
-                            <img src="${defaultAvatar}" class="avatar">
-                            <div class="user-info">
-                                <span class="user-name">${userFullName}</span>
-                                <span class="user-role ${userRole === 'developer' ? 'developer' : (userIsModerator ? 'moderator' : (userRole === 'teacher' ? 'teacher' : 'student'))}">
-                                    ${userRole === 'developer' ? '👑 Разработчик' : (userIsModerator ? '🛡️ Модератор' : (userRole === 'teacher' ? '👨‍🏫 Учитель' : '👨‍🎓 Ученик'))}
-                                </span>
-                            </div>
+                            <img src="${DEFAULT_AVATAR}" class="avatar">
+                            <span>${userFullName}</span>
                             <button onclick="signOut()" class="logout-btn">Выйти</button>
                         </div>
                     `;
                 } else {
-                    const userRef = db.ref('users/' + user.uid);
-                    const snapshot = await userRef.once('value');
-                    const userData = snapshot.val();
-                    
+                    const userData = (await db.ref('users/' + user.uid).once('value')).val();
                     if (userData) {
                         userRole = userData.role;
                         userFullName = userData.fullName || user.displayName;
                         userIsModerator = userData.isModerator || false;
                     }
-                    
                     document.getElementById('userSection').innerHTML = `
                         <div class="user-card">
-                            <img src="${user.photoURL || defaultAvatar}" class="avatar">
-                            <div class="user-info">
-                                <span class="user-name">${userFullName || user.displayName}</span>
-                                <span class="user-role ${userRole === 'developer' ? 'developer' : (userIsModerator ? 'moderator' : (userRole === 'teacher' ? 'teacher' : 'student'))}">
-                                    ${userRole === 'developer' ? '👑 Разработчик' : (userIsModerator ? '🛡️ Модератор' : (userRole === 'teacher' ? '👨‍🏫 Учитель' : '👨‍🎓 Ученик'))}
-                                </span>
-                            </div>
+                            <img src="${user.photoURL || DEFAULT_AVATAR}" class="avatar">
+                            <span>${userFullName || user.displayName}</span>
                             <button onclick="signOut()" class="logout-btn">Выйти</button>
                         </div>
                     `;
@@ -332,253 +173,19 @@
         }
 
         async function loadResults() {
-            const content = document.getElementById('content');
-            
-            const [resultsSnap, quizzesSnap, usersSnap, simpleUsersSnap] = await Promise.all([
-                db.ref('results').once('value'),
-                db.ref('quizzes').once('value'),
-                db.ref('users').once('value'),
-                db.ref('simple_users').once('value')
-            ]);
-            
-            const results = resultsSnap.val();
-            const quizzes = quizzesSnap.val();
-            const googleUsers = usersSnap.val() || {};
-            const simpleUsers = simpleUsersSnap.val() || {};
-            
+            const results = (await db.ref('results').once('value')).val();
             if (!results) {
-                content.innerHTML = `
-                    <div class="results-container">
-                        <h2 style="color: #ffd700; text-align: center;">📊 Результаты</h2>
-                        <p style="text-align: center; color: rgba(255,255,255,0.7); margin-top: 30px;">Пока нет результатов</p>
-                    </div>
-                `;
+                document.getElementById('content').innerHTML = '<div class="results-container"><h2 style="color:#ffd700;">Нет результатов</h2></div>';
                 return;
             }
-
-            allResults = Object.entries(results).map(([id, data]) => ({ id, ...data }));
-            allQuizzes = quizzes ? Object.entries(quizzes).map(([id, data]) => ({ id, ...data })) : [];
             
-            allStudents = [];
-            Object.entries(googleUsers).forEach(([id, data]) => {
-                allStudents.push({ id, ...data, source: 'google' });
-            });
-            Object.entries(simpleUsers).forEach(([id, data]) => {
-                allStudents.push({ id, ...data, source: 'simple' });
-            });
-
-            allResults.sort((a, b) => (b.date || 0) - (a.date || 0));
-
-            if (userRole === 'teacher' || userRole === 'developer' || userIsModerator) {
-                renderTeacherResults();
-            } else {
-                renderStudentResults();
-            }
-        }
-
-        function renderTeacherResults() {
-            const content = document.getElementById('content');
-            
-            const totalQuizzes = new Set(allResults.map(r => r.quizTitle)).size;
-            const totalStudents = new Set(allResults.map(r => r.studentId)).size;
-            const avgScore = (allResults.reduce((sum, r) => sum + (r.score || 0), 0) / allResults.length).toFixed(1);
-            
-            const subjects = [...new Set(allResults.map(r => r.quizSubject).filter(Boolean))];
-            const quizTitles = [...new Set(allResults.map(r => r.quizTitle).filter(Boolean))];
-            
-            content.innerHTML = `
+            const resultsArray = Object.values(results);
+            document.getElementById('content').innerHTML = `
                 <div class="results-container">
-                    <h2 style="color: #ffd700; margin-bottom: 30px;">📊 Все результаты</h2>
-                    
-                    <div class="stats-cards">
-                        <div class="stat-card">
-                            <div class="stat-value">${allResults.length}</div>
-                            <div class="stat-label">Всего результатов</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${totalQuizzes}</div>
-                            <div class="stat-label">Проведено викторин</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${totalStudents}</div>
-                            <div class="stat-label">Учеников</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${avgScore}</div>
-                            <div class="stat-label">Средний балл</div>
-                        </div>
-                    </div>
-                    
-                    <button class="export-btn" onclick="exportResults()">📥 Экспорт в CSV</button>
-                    
-                    <div class="results-filters">
-                        <select class="filter-select" id="subjectFilter" onchange="filterResults()">
-                            <option value="all">Все предметы</option>
-                            ${subjects.map(s => `<option value="${s}">${s}</option>`).join('')}
-                        </select>
-                        
-                        <select class="filter-select" id="quizFilter" onchange="filterResults()">
-                            <option value="all">Все викторины</option>
-                            ${quizTitles.map(q => `<option value="${q}">${q}</option>`).join('')}
-                        </select>
-                        
-                        <select class="filter-select" id="studentFilter" onchange="filterResults()">
-                            <option value="all">Все ученики</option>
-                            ${allStudents.map(s => `<option value="${s.id}">${s.fullName || s.username || s.googleName}</option>`).join('')}
-                        </select>
-                    </div>
-                    
-                    <div style="overflow-x: auto;">
-                        <table class="results-table" id="resultsTable">
-                            <thead>
-                                <tr>
-                                    <th>Ученик</th>
-                                    <th>Предмет</th>
-                                    <th>Викторина</th>
-                                    <th>Баллы</th>
-                                    <th>Дата</th>
-                                </tr>
-                            </thead>
-                            <tbody id="resultsBody">
-                                ${renderResultsRows(allResults)}
-                            </tbody>
-                        </table>
-                    </div>
+                    <h2 style="color:#ffd700;">Всего результатов: ${resultsArray.length}</h2>
                 </div>
             `;
         }
-
-        function renderStudentResults() {
-            const content = document.getElementById('content');
-            
-            const myResults = allResults.filter(r => r.studentId === currentUser.uid);
-            
-            const totalScore = myResults.reduce((sum, r) => sum + (r.score || 0), 0);
-            const avgScore = myResults.length > 0 ? (totalScore / myResults.length).toFixed(1) : 0;
-            
-            content.innerHTML = `
-                <div class="results-container">
-                    <h2 style="color: #ffd700; margin-bottom: 30px;">📊 Мои результаты</h2>
-                    
-                    <div class="stats-cards">
-                        <div class="stat-card">
-                            <div class="stat-value">${myResults.length}</div>
-                            <div class="stat-label">Пройдено викторин</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${totalScore}</div>
-                            <div class="stat-label">Всего баллов</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${avgScore}</div>
-                            <div class="stat-label">Средний балл</div>
-                        </div>
-                    </div>
-                    
-                    <div style="overflow-x: auto;">
-                        <table class="results-table">
-                            <thead>
-                                <tr>
-                                    <th>Предмет</th>
-                                    <th>Викторина</th>
-                                    <th>Баллы</th>
-                                    <th>Дата</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${myResults.map(r => `
-                                    <tr>
-                                        <td class="quiz-title">${r.quizSubject || 'Без предмета'}</td>
-                                        <td class="student-name">${r.quizTitle || 'Без названия'}</td>
-                                        <td class="score-cell">${r.score || 0}/${r.maxScore || 0}</td>
-                                        <td class="date-cell">${r.date ? new Date(r.date).toLocaleString() : 'Дата неизвестна'}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    ${myResults.length === 0 ? '<p style="text-align: center; color: rgba(255,255,255,0.7); margin-top: 30px;">У вас пока нет результатов</p>' : ''}
-                </div>
-            `;
-        }
-
-        function renderResultsRows(results) {
-            return results.map(r => {
-                const student = allStudents.find(s => s.id === r.studentId);
-                const studentName = student ? (student.fullName || student.username || student.googleName) : 'Неизвестный ученик';
-                
-                return `
-                    <tr>
-                        <td class="student-name">${studentName}</td>
-                        <td class="quiz-title">${r.quizSubject || 'Без предмета'}</td>
-                        <td>${r.quizTitle || 'Без названия'}</td>
-                        <td class="score-cell">${r.score || 0}/${r.maxScore || 0}</td>
-                        <td class="date-cell">${r.date ? new Date(r.date).toLocaleString() : 'Дата неизвестна'}</td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function filterResults() {
-            const subjectFilter = document.getElementById('subjectFilter').value;
-            const quizFilter = document.getElementById('quizFilter').value;
-            const studentFilter = document.getElementById('studentFilter').value;
-            
-            let filtered = [...allResults];
-            
-            if (subjectFilter !== 'all') {
-                filtered = filtered.filter(r => r.quizSubject === subjectFilter);
-            }
-            
-            if (quizFilter !== 'all') {
-                filtered = filtered.filter(r => r.quizTitle === quizFilter);
-            }
-            
-            if (studentFilter !== 'all') {
-                filtered = filtered.filter(r => r.studentId === studentFilter);
-            }
-            
-            document.getElementById('resultsBody').innerHTML = renderResultsRows(filtered);
-        }
-
-        function exportResults() {
-            const headers = ['Ученик', 'Предмет', 'Викторина', 'Баллы', 'Макс. балл', 'Дата'];
-            const rows = allResults.map(r => {
-                const student = allStudents.find(s => s.id === r.studentId);
-                const studentName = student ? (student.fullName || student.username || student.googleName) : 'Неизвестный ученик';
-                
-                return [
-                    studentName,
-                    r.quizSubject || 'Без предмета',
-                    r.quizTitle || 'Без названия',
-                    r.score || 0,
-                    r.maxScore || 0,
-                    r.date ? new Date(r.date).toLocaleString() : 'Дата неизвестна'
-                ];
-            });
-            
-            const csvContent = [
-                headers.join(','),
-                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-            ].join('\n');
-            
-            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.href = url;
-            link.setAttribute('download', 'results.csv');
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }
-
-        db.ref('results').on('child_added', () => {
-            if (currentUser) {
-                loadResults();
-            }
-        });
     </script>
 </body>
 </html>
