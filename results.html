@@ -265,13 +265,7 @@
         document.body.className = savedTheme + '-theme';
         document.getElementById('themeToggle').textContent = savedTheme === 'dark' ? '☀️ Светлая' : '🌙 Темная';
 
-        let currentUser = null;
-        let userRole = null;
-        let userFullName = null;
-        let userIsModerator = false;
-        let allResults = [];
-        let allQuizzes = [];
-        let allStudents = [];
+        // Используем глобальные переменные из firebase.js, не объявляем их заново
 
         auth.onAuthStateChanged(async (user) => {
             if (user) {
