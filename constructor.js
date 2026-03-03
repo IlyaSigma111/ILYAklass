@@ -10,6 +10,18 @@ function showConstructor() {
         <h3 style="color: #ffd700; margin-bottom: 20px;">🛠️ Конструктор викторины</h3>
         
         <div class="form-group">
+            <label>Тип викторины</label>
+            <div class="radio-group" id="constructorTypeGroup">
+                <div class="radio-option selected" onclick="selectConstructorType('classic')" id="type-classic">
+                    <input type="radio" name="constructorType" value="classic" checked> 📱 С телефонами (ученики заходят)
+                </div>
+                <div class="radio-option" onclick="selectConstructorType('board')" id="type-board">
+                    <input type="radio" name="constructorType" value="board"> 📝 С доски (ученики отвечают устно)
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group">
             <label>Название викторины</label>
             <input type="text" id="quizTitle" placeholder="Например: Английский 5 класс">
         </div>
@@ -54,6 +66,14 @@ function showConstructor() {
     `;
     
     form.classList.add('visible');
+}
+
+let constructorType = 'classic';
+
+function selectConstructorType(type) {
+    constructorType = type;
+    document.getElementById('type-classic').classList.toggle('selected', type === 'classic');
+    document.getElementById('type-board').classList.toggle('selected', type === 'board');
 }
 
 // Генерация заданного количества вопросов
@@ -152,6 +172,7 @@ async function saveQuizWithQuestions() {
     const title = document.getElementById('quizTitle').value;
     const quizClass = document.getElementById('quizClass').value;
     const subject = document.getElementById('quizSubject').value;
+    const type = constructorType;
     
     if (!title) {
         alert('Введите название викторины');
@@ -182,12 +203,9 @@ async function saveQuizWithQuestions() {
     if (!isValid) return;
     
     try {
-        // Создаем уникальный ID для викторины
-        const quizId = `quiz_${Date.now()}`;
-        
-        // Сохраняем метаданные викторины
         const quizData = {
             type: 'constructed',
+            constructorType: type,
             class: quizClass,
             subject: subject,
             title: title,
