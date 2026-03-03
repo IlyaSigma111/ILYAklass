@@ -25,6 +25,9 @@ let selectedSubject = 'all';
 let quizType = 'kahoot';
 let allSubjects = [];
 
+// Локальная заглушка для аватара (без Gravatar)
+const DEFAULT_AVATAR = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\' viewBox=\'0 0 100 100\'%3E%3Ccircle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%23333\' stroke=\'%23ffd700\' stroke-width=\'2\'/%3E%3Ctext x=\'50\' y=\'67\' font-size=\'40\' text-anchor=\'middle\' fill=\'%23ffd700\' font-family=\'Arial\'%3E👤%3C/text%3E%3C/svg%3E';
+
 // Функция для очистки имени от модераторских скобок
 function cleanDisplayName(name) {
     if (!name) return name;
