@@ -6,6 +6,8 @@ let quizQuestions = [];
 // Функция для отображения конструктора
 function showConstructor() {
     const form = document.getElementById('quizForm');
+    if (!form) return;
+    
     form.innerHTML = `
         <h3 style="color: #ffd700; margin-bottom: 20px;">🛠️ Конструктор викторины</h3>
         
@@ -72,13 +74,16 @@ let constructorType = 'classic';
 
 function selectConstructorType(type) {
     constructorType = type;
-    document.getElementById('type-classic').classList.toggle('selected', type === 'classic');
-    document.getElementById('type-board').classList.toggle('selected', type === 'board');
+    const typeClassic = document.getElementById('type-classic');
+    const typeBoard = document.getElementById('type-board');
+    
+    if (typeClassic) typeClassic.classList.toggle('selected', type === 'classic');
+    if (typeBoard) typeBoard.classList.toggle('selected', type === 'board');
 }
 
 // Генерация заданного количества вопросов
 function generateQuestions() {
-    const count = parseInt(document.getElementById('questionCount').value) || 5;
+    const count = parseInt(document.getElementById('questionCount')?.value) || 5;
     quizQuestions = [];
     
     for (let i = 0; i < count; i++) {
@@ -91,8 +96,12 @@ function generateQuestions() {
     }
     
     renderQuestions();
-    document.getElementById('addQuestionBtn').style.display = 'block';
-    document.getElementById('saveQuizBtn').style.display = 'block';
+    
+    const addBtn = document.getElementById('addQuestionBtn');
+    const saveBtn = document.getElementById('saveQuizBtn');
+    
+    if (addBtn) addBtn.style.display = 'block';
+    if (saveBtn) saveBtn.style.display = 'block';
 }
 
 // Добавление нового вопроса
@@ -112,8 +121,11 @@ function removeQuestion(index) {
     renderQuestions();
     
     if (quizQuestions.length === 0) {
-        document.getElementById('addQuestionBtn').style.display = 'none';
-        document.getElementById('saveQuizBtn').style.display = 'none';
+        const addBtn = document.getElementById('addQuestionBtn');
+        const saveBtn = document.getElementById('saveQuizBtn');
+        
+        if (addBtn) addBtn.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'none';
     }
 }
 
@@ -132,6 +144,8 @@ function updateQuestion(index, field, value) {
 // Отрисовка вопросов
 function renderQuestions() {
     const container = document.getElementById('questionsContainer');
+    if (!container) return;
+    
     let html = '';
     
     quizQuestions.forEach((q, index) => {
@@ -169,9 +183,9 @@ function renderQuestions() {
 
 // Сохранение викторины с вопросами
 async function saveQuizWithQuestions() {
-    const title = document.getElementById('quizTitle').value;
-    const quizClass = document.getElementById('quizClass').value;
-    const subject = document.getElementById('quizSubject').value;
+    const title = document.getElementById('quizTitle')?.value;
+    const quizClass = document.getElementById('quizClass')?.value;
+    const subject = document.getElementById('quizSubject')?.value;
     const type = constructorType;
     
     if (!title) {
@@ -229,7 +243,10 @@ async function saveQuizWithQuestions() {
         }
         
         alert('✅ Викторина успешно создана!');
-        document.getElementById('quizForm').classList.remove('visible');
+        
+        const form = document.getElementById('quizForm');
+        if (form) form.classList.remove('visible');
+        
         quizQuestions = [];
         
     } catch (error) {
