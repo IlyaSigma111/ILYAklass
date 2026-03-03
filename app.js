@@ -16,7 +16,7 @@ let processedUpdates = new Set();
 // Email разработчика (для Google входа)
 const DEVELOPER_EMAIL = 'ilyagulkov25@gmail.com';
 
-// ===== ОБНОВЛЕННАЯ АВТОРИЗАЦИЯ (поддерживает оба способа) =====
+// ===== АВТОРИЗАЦИЯ =====
 auth.onAuthStateChanged(async (googleUser) => {
     // Проверяем сначала simple-пользователя
     const simpleUser = getCurrentSimpleUser();
@@ -27,14 +27,18 @@ auth.onAuthStateChanged(async (googleUser) => {
             uid: simpleUser.id,
             email: simpleUser.username + '@local',
             displayName: simpleUser.username,
-            photoURL: 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'
+            photoURL: DEFAULT_AVATAR
         };
         userRole = simpleUser.role;
         userFullName = simpleUser.fullName || simpleUser.username;
         userIsModerator = simpleUser.isModerator || false;
         
         await loadAllSubjects();
-        document.getElementById('roleModal').style.display = 'none';
+        
+        // Проверяем существование элементов перед обращением
+        const roleModal = document.getElementById('roleModal');
+        if (roleModal) roleModal.style.display = 'none';
+        
         updateUI();
         
         const savedSubject = localStorage.getItem('selectedSubject_' + currentUser.uid);
@@ -84,7 +88,9 @@ auth.onAuthStateChanged(async (googleUser) => {
                 teacherSubjects = [...allSubjects];
             }
             
-            document.getElementById('roleModal').style.display = 'none';
+            const roleModal = document.getElementById('roleModal');
+            if (roleModal) roleModal.style.display = 'none';
+            
             updateUI();
             
             const savedSubject = localStorage.getItem('selectedSubject_' + currentUser.uid);
@@ -96,7 +102,9 @@ auth.onAuthStateChanged(async (googleUser) => {
             
             loadContent();
         } else {
-            document.getElementById('roleModal').style.display = 'flex';
+            const roleModal = document.getElementById('roleModal');
+            if (roleModal) roleModal.style.display = 'flex';
+            
             updateUI();
         }
     } else {
@@ -153,13 +161,16 @@ async function selectRole(role) {
         
         await db.ref('users/' + currentUser.uid).set(userData);
         
-        document.getElementById('roleModal').style.display = 'none';
+        const roleModal = document.getElementById('roleModal');
+        if (roleModal) roleModal.style.display = 'none';
+        
         userFullName = currentUser.displayName;
         userRole = isDeveloper ? 'developer' : role;
         userIsModerator = isModerator;
         
         if (role === 'teacher' && !isDeveloper) {
-            document.getElementById('subjectModal').style.display = 'flex';
+            const subjectModal = document.getElementById('subjectModal');
+            if (subjectModal) subjectModal.style.display = 'flex';
             renderSubjectCheckboxes();
         } else {
             window.location.reload();
@@ -178,12 +189,16 @@ async function saveTeacherSubjects() {
         subjects: teacherSubjects
     });
     
-    document.getElementById('subjectModal').style.display = 'none';
+    const subjectModal = document.getElementById('subjectModal');
+    if (subjectModal) subjectModal.style.display = 'none';
+    
     window.location.reload();
 }
 
 function skipSubjectSelection() {
-    document.getElementById('subjectModal').style.display = 'none';
+    const subjectModal = document.getElementById('subjectModal');
+    if (subjectModal) subjectModal.style.display = 'none';
+    
     teacherSubjects = [...allSubjects];
     window.location.reload();
 }
@@ -209,7 +224,7 @@ function updateUI() {
         
         userSection.innerHTML = `
             <div class="user-card">
-                <img src="${currentUser.photoURL}" class="avatar">
+                <img src="${currentUser.photoURL || DEFAULT_AVATAR}" class="avatar">
                 <div class="user-info">
                     <span class="user-name">${displayName}</span>
                     <span class="user-role ${roleClass}">${roleText}</span>
@@ -225,6 +240,7 @@ function updateUI() {
 // ===== ЗАГРУЗКА КОНТЕНТА =====
 function loadContent() {
     const content = document.getElementById('content');
+    if (!content) return;
     
     if (!currentUser) {
         content.innerHTML = `
@@ -308,14 +324,17 @@ function loadContent() {
     
     if (window.location.hash === '#addQuiz') {
         setTimeout(() => {
-            document.getElementById('quizForm').classList.add('visible');
+            const quizForm = document.getElementById('quizForm');
+            if (quizForm) quizForm.classList.add('visible');
         }, 500);
     }
 }
 
 function selectSubject(subject) {
     selectedSubject = subject;
-    localStorage.setItem('selectedSubject_' + currentUser.uid, subject);
+    if (currentUser) {
+        localStorage.setItem('selectedSubject_' + currentUser.uid, subject);
+    }
     
     document.querySelectorAll('.subject-card').forEach(el => el.classList.remove('selected'));
     
@@ -327,7 +346,9 @@ function selectSubject(subject) {
         if (el) el.classList.add('selected');
     }
     
-    document.getElementById('selectedSubjectTitle').innerHTML = subject === 'all' ? 'Все предметы' : subject;
+    const titleEl = document.getElementById('selectedSubjectTitle');
+    if (titleEl) titleEl.innerHTML = subject === 'all' ? 'Все предметы' : subject;
+    
     loadQuizzesBySubject(subject);
 }
 
@@ -419,8 +440,13 @@ function loadQuizzesBySubject(subject) {
                     badgeClass = 'badge-kahoot';
                     badgeText = '🎮 Kahoot';
                 } else if (q.type === 'constructed') {
-                    badgeClass = 'badge-constructed';
-                    badgeText = '🛠️ Конструктор';
+                    if (q.constructorType === 'board') {
+                        badgeClass = 'badge-board';
+                        badgeText = '📝 С доски';
+                    } else {
+                        badgeClass = 'badge-constructed';
+                        badgeText = '🛠️ Конструктор';
+                    }
                 }
                 
                 html += `
@@ -442,14 +468,16 @@ function loadQuizzesBySubject(subject) {
                                 ${q.type === 'kahoot' ? 
                                     `<button class="btn btn-teacher" onclick="startQuiz('${key}', '${teacherLink}', '${q.subject}', '${q.title}', ${q.maxScore})">▶️ Запустить</button>` :
                                     q.type === 'constructed' ?
-                                    `<button class="btn btn-teacher" onclick="startConstructedQuiz('${key}')">▶️ Провести</button>` :
+                                    `<button class="btn btn-teacher" onclick="startConstructedQuiz('${key}', '${q.constructorType}')">▶️ Провести</button>` :
                                     `<a href="${q.link}" target="_blank" class="btn btn-external">🌐 Перейти</a>`
                                 }
                             ` : `
                                 ${q.type === 'kahoot' ? 
                                     `<button class="btn btn-student" onclick="joinQuiz('${key}', '${studentLink}', '${q.subject}', '${q.title}', ${q.maxScore})">🎮 Играть</button>` :
-                                    q.type === 'constructed' ?
+                                    q.type === 'constructed' && q.constructorType !== 'board' ?
                                     `<button class="btn btn-student" onclick="joinConstructedQuiz('${key}')">🛠️ Играть</button>` :
+                                    q.type === 'constructed' && q.constructorType === 'board' ?
+                                    `<span class="btn" style="background: #ff9800;">👥 Устно</span>` :
                                     `<a href="${q.link}" target="_blank" class="btn btn-external">🌐 Перейти</a>`
                                 }
                             `}
@@ -465,109 +493,10 @@ function loadQuizzesBySubject(subject) {
     });
 }
 
-// Запуск конструкторской викторины
-async function startConstructedQuiz(quizId) {
-    try {
-        const teacherName = userFullName || currentUser.displayName || 'Учитель';
-        
-        // Получаем вопросы
-        const questionsSnap = await db.ref(`questions/${quizId}`).once('value');
-        const questions = questionsSnap.val();
-        
-        if (!questions) {
-            alert('Ошибка: вопросы не найдены');
-            return;
-        }
-        
-        const sessionRef = db.ref('sessions').push();
-        const sessionId = sessionRef.key;
-        
-        const sessionData = {
-            quizId: quizId,
-            quizType: 'constructed',
-            quizSubject: 'constructed',
-            quizTitle: 'constructed',
-            maxScore: Object.keys(questions).length,
-            teacherId: currentUser.uid,
-            teacherName: teacherName,
-            status: 'active',
-            startedAt: Date.now(),
-            students: {}
-        };
-        
-        await sessionRef.set(sessionData);
-        
-        // Сохраняем в teacherSessions
-        await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).set({
-            quizSubject: 'constructed',
-            quizTitle: 'constructed',
-            maxScore: Object.keys(questions).length,
-            status: 'active',
-            startedAt: Date.now(),
-            students: {}
-        });
-        
-        // Открываем панель учителя для конструкторской викторины
-        window.open(`teacher-constructed.html?session=${sessionId}&quiz=${quizId}`, '_blank');
-        
-    } catch (error) {
-        console.error('Ошибка при запуске:', error);
-        alert('Ошибка при запуске викторины');
-    }
-}
-
-// Присоединение к конструкторской викторине
-async function joinConstructedQuiz(quizId) {
-    try {
-        const studentName = userFullName || currentUser.displayName || 'Ученик';
-        if (!studentName) return;
-        
-        const sessionsSnapshot = await db.ref('sessions').orderByChild('quizId').equalTo(quizId).once('value');
-        const sessions = sessionsSnapshot.val();
-        
-        let activeSession = null;
-        let activeSessionId = null;
-        
-        if (sessions) {
-            for (const [key, value] of Object.entries(sessions)) {
-                if (value.status === 'active') {
-                    activeSession = value;
-                    activeSessionId = key;
-                    break;
-                }
-            }
-        }
-        
-        if (!activeSession) {
-            alert('Нет активной викторины');
-            return;
-        }
-        
-        await db.ref(`sessions/${activeSessionId}/students/${currentUser.uid}`).set({
-            name: studentName,
-            email: currentUser.email,
-            joinedAt: Date.now()
-        });
-        
-        await db.ref(`teacherSessions/${activeSession.teacherId}/${activeSessionId}/students/${currentUser.uid}`).set({
-            name: studentName,
-            email: currentUser.email
-        });
-        
-        // Открываем страницу ученика для конструкторской викторины
-        window.open(`student-constructed.html?session=${activeSessionId}&quiz=${quizId}&student=${currentUser.uid}&name=${encodeURIComponent(studentName)}`, '_blank');
-        
-    } catch (error) {
-        console.error('Ошибка при присоединении:', error);
-        alert('Ошибка при присоединении к викторине');
-    }
-}
-
 async function deleteQuiz(quizId) {
     if (!confirm('Удалить викторину?')) return;
     try {
         await db.ref('quizzes/' + quizId).remove();
-        // Также удаляем вопросы, если есть
         await db.ref('questions/' + quizId).remove();
     } catch (error) {
         console.error('Ошибка:', error);
@@ -576,13 +505,19 @@ async function deleteQuiz(quizId) {
 
 function selectQuizType(type) {
     quizType = type;
-    document.getElementById('type-kahoot').classList.toggle('selected', type === 'kahoot');
-    document.getElementById('type-simple').classList.toggle('selected', type === 'simple');
-    document.getElementById('maxScoreGroup').style.display = type === 'kahoot' ? 'block' : 'none';
+    const typeKahoot = document.getElementById('type-kahoot');
+    const typeSimple = document.getElementById('type-simple');
+    const maxScoreGroup = document.getElementById('maxScoreGroup');
+    
+    if (typeKahoot) typeKahoot.classList.toggle('selected', type === 'kahoot');
+    if (typeSimple) typeSimple.classList.toggle('selected', type === 'simple');
+    if (maxScoreGroup) maxScoreGroup.style.display = type === 'kahoot' ? 'block' : 'none';
 }
 
 function toggleForm() {
     const form = document.getElementById('quizForm');
+    if (!form) return;
+    
     form.innerHTML = `
         <h3 style="color: #ffd700; margin-bottom: 20px;">➕ Добавить по ссылке</h3>
         
@@ -646,12 +581,12 @@ function toggleForm() {
 async function saveQuiz() {
     try {
         const type = quizType;
-        const quizClass = document.getElementById('quizClass').value;
-        const subject = document.getElementById('quizSubject').value;
-        const title = document.getElementById('quizTitle').value;
-        const description = document.getElementById('quizDescription').value;
-        let link = document.getElementById('quizLink').value;
-        const maxScore = type === 'kahoot' ? parseInt(document.getElementById('quizMaxScore').value) : 0;
+        const quizClass = document.getElementById('quizClass')?.value;
+        const subject = document.getElementById('quizSubject')?.value;
+        const title = document.getElementById('quizTitle')?.value;
+        const description = document.getElementById('quizDescription')?.value;
+        let link = document.getElementById('quizLink')?.value;
+        const maxScore = type === 'kahoot' ? parseInt(document.getElementById('quizMaxScore')?.value) : 0;
 
         if (!title || !link) {
             alert('Заполните название и ссылку');
@@ -673,11 +608,17 @@ async function saveQuiz() {
 
         await db.ref('quizzes').push(quizData);
         
-        document.getElementById('quizTitle').value = '';
-        document.getElementById('quizDescription').value = '';
-        document.getElementById('quizLink').value = '';
-        document.getElementById('quizMaxScore').value = '15';
-        document.getElementById('quizForm').classList.remove('visible');
+        const titleInput = document.getElementById('quizTitle');
+        const descInput = document.getElementById('quizDescription');
+        const linkInput = document.getElementById('quizLink');
+        const maxScoreInput = document.getElementById('quizMaxScore');
+        const form = document.getElementById('quizForm');
+        
+        if (titleInput) titleInput.value = '';
+        if (descInput) descInput.value = '';
+        if (linkInput) linkInput.value = '';
+        if (maxScoreInput) maxScoreInput.value = '15';
+        if (form) form.classList.remove('visible');
         
         alert('✅ Викторина добавлена');
     } catch (error) {
@@ -770,6 +711,105 @@ async function joinQuiz(quizId, link, subject, title, maxScore) {
         }
     } catch (error) {
         console.error('Ошибка:', error);
+    }
+}
+
+// Запуск конструкторской викторины
+async function startConstructedQuiz(quizId, constructorType = 'classic') {
+    try {
+        const teacherName = userFullName || currentUser.displayName || 'Учитель';
+        
+        const questionsSnap = await db.ref(`questions/${quizId}`).once('value');
+        const questions = questionsSnap.val();
+        
+        if (!questions) {
+            alert('Ошибка: вопросы не найдены');
+            return;
+        }
+        
+        if (constructorType === 'board') {
+            window.open(`teacher-board.html?quiz=${quizId}`, '_blank');
+            return;
+        }
+        
+        const sessionRef = db.ref('sessions').push();
+        const sessionId = sessionRef.key;
+        
+        const sessionData = {
+            quizId: quizId,
+            quizType: 'constructed',
+            quizSubject: 'constructed',
+            quizTitle: 'constructed',
+            maxScore: Object.keys(questions).length,
+            teacherId: currentUser.uid,
+            teacherName: teacherName,
+            status: 'active',
+            startedAt: Date.now(),
+            students: {}
+        };
+        
+        await sessionRef.set(sessionData);
+        
+        await db.ref(`teacherSessions/${currentUser.uid}/${sessionId}`).set({
+            quizSubject: 'constructed',
+            quizTitle: 'constructed',
+            maxScore: Object.keys(questions).length,
+            status: 'active',
+            startedAt: Date.now(),
+            students: {}
+        });
+        
+        window.open(`teacher-constructed.html?session=${sessionId}&quiz=${quizId}`, '_blank');
+        
+    } catch (error) {
+        console.error('Ошибка при запуске:', error);
+        alert('Ошибка при запуске викторины');
+    }
+}
+
+// Присоединение к конструкторской викторине
+async function joinConstructedQuiz(quizId) {
+    try {
+        const studentName = userFullName || currentUser.displayName || 'Ученик';
+        if (!studentName) return;
+        
+        const sessionsSnapshot = await db.ref('sessions').orderByChild('quizId').equalTo(quizId).once('value');
+        const sessions = sessionsSnapshot.val();
+        
+        let activeSession = null;
+        let activeSessionId = null;
+        
+        if (sessions) {
+            for (const [key, value] of Object.entries(sessions)) {
+                if (value.status === 'active') {
+                    activeSession = value;
+                    activeSessionId = key;
+                    break;
+                }
+            }
+        }
+        
+        if (!activeSession) {
+            alert('Нет активной викторины');
+            return;
+        }
+        
+        await db.ref(`sessions/${activeSessionId}/students/${currentUser.uid}`).set({
+            name: studentName,
+            email: currentUser.email,
+            joinedAt: Date.now()
+        });
+        
+        await db.ref(`teacherSessions/${activeSession.teacherId}/${activeSessionId}/students/${currentUser.uid}`).set({
+            name: studentName,
+            email: currentUser.email
+        });
+        
+        window.open(`student-constructed.html?session=${activeSessionId}&quiz=${quizId}&student=${currentUser.uid}&name=${encodeURIComponent(studentName)}`, '_blank');
+        
+    } catch (error) {
+        console.error('Ошибка при присоединении:', error);
+        alert('Ошибка при присоединении к викторине');
     }
 }
 
@@ -1147,7 +1187,6 @@ async function getFullStats() {
         
         let developers = 0, moderators = 0, teachers = 0, students = 0;
         
-        // Считаем Google пользователей
         Object.values(googleUsers).forEach(u => {
             if (u.role === 'developer') developers++;
             else if (u.isModerator) moderators++;
@@ -1155,7 +1194,6 @@ async function getFullStats() {
             else if (u.role === 'student') students++;
         });
         
-        // Считаем Simple пользователей
         Object.values(simpleUsers).forEach(u => {
             if (u.role === 'developer') developers++;
             else if (u.isModerator) moderators++;
@@ -1364,5 +1402,26 @@ setTimeout(() => {
     if (!botStarted) {
         botStarted = true;
         getTelegramUpdates();
+        
+        // Отправляем приветственное сообщение при запуске
+        setTimeout(async () => {
+            const stats = await getFullStats();
+            sendTelegramMessage(`
+🚀 <b>ИЛЬЯКЛАСС ЗАПУЩЕН!</b>
+
+${stats}
+
+✅ Бот активен и будет присылать статистику каждый день в 20:00
+            `);
+        }, 5000);
     }
 }, 3000);
+
+// Ежедневная статистика в 20:00
+setInterval(async () => {
+    const now = new Date();
+    if (now.getHours() === 20 && now.getMinutes() === 0) {
+        const stats = await getFullStats();
+        sendTelegramMessage(stats);
+    }
+}, 60000);
