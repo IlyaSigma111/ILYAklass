@@ -8,8 +8,263 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <style>
+        /* ЖЕСТКИЕ СТИЛИ ПРЯМО В ФАЙЛЕ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%) !important;
+            color: white !important;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        body.light-theme {
+            background: linear-gradient(145deg, #667eea 0%, #764ba2 100%) !important;
+            color: #1a1a2e !important;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+            padding: 12px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .logo {
+            font-size: 32px;
+            font-weight: 900;
+            cursor: pointer;
+        }
+
+        .logo-il {
+            color: #ffd700;
+        }
+
+        .logo-yaclass {
+            color: #00ffff;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-link {
+            padding: 8px 20px;
+            border-radius: 40px;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .nav-link.active {
+            background: rgba(255, 215, 0, 0.3);
+        }
+
+        .user-card {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 5px 15px 5px 5px;
+            border-radius: 50px;
+        }
+
+        .avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: 2px solid #ffd700;
+        }
+
+        .logout-btn, .theme-btn {
+            padding: 8px 20px;
+            border-radius: 40px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            cursor: pointer;
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 25px auto;
+            padding: 0 20px;
+        }
+
+        .profile-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 25px;
+            margin-top: 20px;
+        }
+
+        .profile-sidebar, .profile-main {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 30px;
+            padding: 30px;
+            color: white;
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 3px solid #ffd700;
+            margin-bottom: 20px;
+        }
+
+        .profile-name {
+            font-size: 22px;
+            color: #ffd700;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .profile-email {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .profile-role {
+            display: inline-block;
+            padding: 8px 25px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .profile-role.developer {
+            background: rgba(255, 68, 68, 0.2);
+            border: 1px solid #ff4444;
+            color: #ff4444;
+        }
+
+        .profile-role.moderator {
+            background: rgba(0, 255, 255, 0.2);
+            border: 1px solid #00ffff;
+            color: #00ffff;
+        }
+
+        .profile-role.teacher {
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid #ffd700;
+            color: #ffd700;
+        }
+
+        .profile-role.student {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4CAF50;
+            color: #4CAF50;
+        }
+
+        .settings-title {
+            color: #ffd700;
+            font-size: 20px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .setting-label {
+            font-weight: 600;
+            color: white;
+            font-size: 15px;
+        }
+
+        .setting-description {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+        }
+
+        .setting-input {
+            padding: 10px 15px;
+            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            width: 250px;
+        }
+
+        .subject-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 25px;
+            cursor: pointer;
+        }
+
+        .add-quiz-btn {
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid #ffd700;
+            color: #ffd700;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .submit-quiz {
+            background: linear-gradient(135deg, #ffd700, #ffaa00);
+            color: #1a1a2e;
+            border: none;
+            padding: 15px;
+            border-radius: 40px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: white;
+            font-size: 18px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .profile-container {
+                grid-template-columns: 1fr;
+            }
+            .setting-input {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
-<body>
+<body class="dark-theme">
     <header class="header">
         <div class="header-left">
             <div class="logo" onclick="window.location='index.html'">
@@ -23,7 +278,7 @@
             </nav>
         </div>
         <div class="header-right">
-            <button class="theme-btn" onclick="toggleTheme()" id="themeToggle">🌙 Темная</button>
+            <button class="theme-btn" onclick="toggleTheme()" id="themeToggle">☀️ Светлая</button>
             <div id="userSection"></div>
         </div>
     </header>
@@ -35,30 +290,30 @@
     <script src="firebase.js"></script>
     <script src="auth.js"></script>
     <script>
+        // Функция переключения темы
         function toggleTheme() {
             const body = document.body;
             const themeBtn = document.getElementById('themeToggle');
             
-            if (body.classList.contains('light-theme')) {
-                body.classList.remove('light-theme');
-                body.classList.add('dark-theme');
-                themeBtn.textContent = '☀️ Светлая';
-                localStorage.setItem('theme', 'dark');
-            } else {
+            if (body.classList.contains('dark-theme')) {
                 body.classList.remove('dark-theme');
                 body.classList.add('light-theme');
                 themeBtn.textContent = '🌙 Темная';
                 localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.remove('light-theme');
+                body.classList.add('dark-theme');
+                themeBtn.textContent = '☀️ Светлая';
+                localStorage.setItem('theme', 'dark');
             }
         }
 
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark') {
-            document.body.classList.remove('light-theme');
-            document.body.classList.add('dark-theme');
-            document.getElementById('themeToggle').textContent = '☀️ Светлая';
-        }
+        // Принудительно устанавливаем тему при загрузке
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.body.className = savedTheme + '-theme';
+        document.getElementById('themeToggle').textContent = savedTheme === 'dark' ? '☀️ Светлая' : '🌙 Темная';
 
+        // Остальной код auth и загрузки профиля
         let currentUser = null;
         let userRole = null;
         let userFullName = null;
@@ -133,6 +388,10 @@
                                 <button onclick="signOut()" class="logout-btn">Выйти</button>
                             </div>
                         `;
+                        
+                        if (userRole === 'teacher' && simpleUser.subjects) {
+                            teacherSubjects = simpleUser.subjects;
+                        }
                         
                         loadProfileContent(simpleUser);
                     } else {
@@ -277,12 +536,59 @@
                                 <button class="submit-quiz" onclick="saveTeacherSubjects()">💾 Сохранить предметы</button>
                             </div>
                         ` : ''}
+                        
+                        ${userRole === 'student' ? `
+                            <div class="settings-section">
+                                <h3 style="color: #ffd700; margin-bottom: 20px;">📊 Моя статистика</h3>
+                                <div class="setting-item">
+                                    <div class="setting-label">Всего викторин пройдено</div>
+                                    <div class="setting-value" id="totalQuizzes">0</div>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-label">Сумма баллов</div>
+                                    <div class="setting-value" id="totalScore">0</div>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-label">Средний балл</div>
+                                    <div class="setting-value" id="avgScore">0</div>
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
             
             if (userRole === 'teacher') {
                 renderSubjectCheckboxes();
+            }
+            
+            if (userRole === 'student') {
+                loadStudentStats();
+            }
+        }
+        
+        async function loadStudentStats() {
+            try {
+                const resultsSnap = await db.ref('results').orderByChild('studentId').equalTo(currentUser.uid).once('value');
+                const results = resultsSnap.val() || {};
+                
+                let total = 0;
+                let count = 0;
+                
+                Object.values(results).forEach(r => {
+                    total += r.score || 0;
+                    count++;
+                });
+                
+                const totalEl = document.getElementById('totalQuizzes');
+                const scoreEl = document.getElementById('totalScore');
+                const avgEl = document.getElementById('avgScore');
+                
+                if (totalEl) totalEl.textContent = count;
+                if (scoreEl) scoreEl.textContent = total;
+                if (avgEl) avgEl.textContent = count > 0 ? (total / count).toFixed(1) : 0;
+            } catch (error) {
+                console.error('Ошибка загрузки статистики:', error);
             }
         }
         
