@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>ИЛЬЯКЛАСС</title>
+    <!-- Добавляем favicon чтобы не было 404 -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
     <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -194,6 +196,180 @@
             cursor: pointer;
             width: 100%;
         }
+        
+        /* Дополнительные стили для мобильной версии */
+        @media (max-width: 768px) {
+            .modal-overlay {
+                padding: 10px;
+                align-items: flex-start;
+                overflow-y: auto;
+            }
+            
+            .role-modal {
+                margin: 20px auto;
+                max-height: none;
+                padding: 20px;
+            }
+            
+            .form-group input,
+            .form-group select,
+            .form-group textarea {
+                font-size: 16px;
+                padding: 12px 15px;
+            }
+            
+            .login-big-btn,
+            .submit-quiz,
+            .finish-quiz-btn,
+            .add-quiz-btn {
+                min-height: 48px;
+                font-size: 16px;
+            }
+            
+            .radio-option {
+                padding: 15px 20px;
+            }
+            
+            .role-option {
+                padding: 25px 15px;
+            }
+            
+            .header {
+                padding: 10px;
+            }
+            
+            .nav-menu {
+                gap: 5px;
+            }
+            
+            .nav-link {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+            
+            .user-card {
+                padding: 3px 8px 3px 3px;
+            }
+            
+            .avatar {
+                width: 28px;
+                height: 28px;
+            }
+            
+            .user-name {
+                font-size: 11px;
+            }
+        }
+        
+        /* Стили для конструктора */
+        .question-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            color: #ffd700;
+            font-weight: 600;
+        }
+        
+        .remove-question {
+            background: none;
+            border: none;
+            color: #ff4444;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 5px 10px;
+        }
+        
+        .answer-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+        }
+        
+        .answer-option input[type="text"] {
+            flex: 1;
+            margin: 0;
+        }
+        
+        .answer-option input[type="radio"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #ffd700;
+        }
+        
+        .correct-badge {
+            color: #4CAF50;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        
+        .add-question-btn {
+            background: rgba(255, 215, 0, 0.2);
+            border: 2px dashed #ffd700;
+            color: #ffd700;
+            padding: 15px;
+            border-radius: 20px;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 20px 0;
+            transition: all 0.3s;
+        }
+        
+        .add-question-btn:hover {
+            background: rgba(255, 215, 0, 0.3);
+        }
+        
+        .question-count {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .question-count input {
+            width: 80px;
+            text-align: center;
+        }
+        
+        .constructor-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        @media (max-width: 480px) {
+            .constructor-buttons {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .constructor-buttons button {
+                width: 100%;
+            }
+            
+            .answer-option {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .answer-option input[type="text"] {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body class="dark-theme">
@@ -219,7 +395,28 @@
         <div id="content" class="loading">Загрузка...</div>
     </main>
 
-    <!-- Модальное окно входа -->
+    <!-- Модальное окно выбора роли (для Google) -->
+    <div id="roleModal" class="modal-overlay" style="display: none;">
+        <div class="role-modal">
+            <h2>Добро пожаловать в ИЛЬЯКЛАСС!</h2>
+            <p style="color: #aaa; margin: 20px 0; font-size: 18px;">Выберите роль — это решение навсегда</p>
+            <div class="role-options">
+                <div class="role-option teacher" onclick="selectRole('teacher')">
+                    <div class="role-icon">👨‍🏫</div>
+                    <h3>Учитель</h3>
+                    <p style="color: #aaa; margin-top: 15px;">Создавать и проводить викторины</p>
+                </div>
+                <div class="role-option student" onclick="selectRole('student')">
+                    <div class="role-icon">👨‍🎓</div>
+                    <h3>Ученик</h3>
+                    <p style="color: #aaa; margin-top: 15px;">Проходить викторины и получать оценки</p>
+                </div>
+            </div>
+            <p class="warning-text" style="color: #ff4444; text-align: center; font-size: 16px;">⚠️ После подтверждения роль изменить нельзя</p>
+        </div>
+    </div>
+
+    <!-- Модальное окно входа по нику и паролю -->
     <div id="simpleLoginModal" class="modal-overlay" style="display: none;">
         <div class="role-modal" style="max-width: 450px; padding: 30px;">
             <h2 style="color: #ffd700; margin-bottom: 25px; text-align: center;">🔑 Вход в ИЛЬЯКЛАСС</h2>
@@ -295,6 +492,25 @@
             <div style="display: flex; gap: 15px; margin-top: 30px;">
                 <button class="submit-quiz" onclick="registerUser()" style="flex: 2;">Зарегистрироваться</button>
                 <button class="finish-quiz-btn" onclick="closeRegisterModal()" style="flex: 1;">Назад</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно выбора предметов для учителя -->
+    <div id="subjectModal" class="modal-overlay" style="display: none;">
+        <div class="role-modal" style="max-width: 800px;">
+            <h2>Выберите ваши предметы</h2>
+            <p style="color: #aaa; margin: 20px 0;">Какие предметы вы преподаете?</p>
+            <div id="subjectsCheckboxList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin: 30px 0; max-height: 400px; overflow-y: auto; padding: 10px;"></div>
+            
+            <div style="display: flex; gap: 15px; margin-bottom: 30px;">
+                <input type="text" id="newSubjectInput" placeholder="Введите новый предмет" style="flex: 1; padding: 15px; border: 2px solid #4CAF50; border-radius: 30px; background: rgba(0,0,0,0.2); color: white;">
+                <button onclick="addNewSubject()" class="add-quiz-btn" style="padding: 15px 30px;">➕ Добавить</button>
+            </div>
+            
+            <div style="display: flex; gap: 15px;">
+                <button onclick="saveTeacherSubjects()" class="submit-quiz">Сохранить</button>
+                <button onclick="skipSubjectSelection()" class="finish-quiz-btn" style="background: transparent;">Пропустить</button>
             </div>
         </div>
     </div>
