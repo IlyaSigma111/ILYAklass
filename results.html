@@ -90,6 +90,7 @@
             height: 38px;
             border-radius: 50%;
             border: 2px solid #ffd700;
+            object-fit: cover;
         }
 
         .logout-btn, .theme-btn {
@@ -265,7 +266,8 @@
         document.body.className = savedTheme + '-theme';
         document.getElementById('themeToggle').textContent = savedTheme === 'dark' ? '☀️ Светлая' : '🌙 Темная';
 
-        // Используем глобальные переменные из firebase.js, не объявляем их заново
+        // Локальная заглушка для аватара (без Gravatar)
+        const defaultAvatar = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\' viewBox=\'0 0 100 100\'%3E%3Ccircle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%23333\' stroke=\'%23ffd700\' stroke-width=\'2\'/%3E%3Ctext x=\'50\' y=\'67\' font-size=\'40\' text-anchor=\'middle\' fill=\'%23ffd700\' font-family=\'Arial\'%3E👤%3C/text%3E%3C/svg%3E';
 
         auth.onAuthStateChanged(async (user) => {
             if (user) {
@@ -279,7 +281,7 @@
                     
                     document.getElementById('userSection').innerHTML = `
                         <div class="user-card">
-                            <img src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y" class="avatar">
+                            <img src="${defaultAvatar}" class="avatar">
                             <div class="user-info">
                                 <span class="user-name">${userFullName}</span>
                                 <span class="user-role ${userRole === 'developer' ? 'developer' : (userIsModerator ? 'moderator' : (userRole === 'teacher' ? 'teacher' : 'student'))}">
@@ -302,7 +304,7 @@
                     
                     document.getElementById('userSection').innerHTML = `
                         <div class="user-card">
-                            <img src="${user.photoURL}" class="avatar">
+                            <img src="${user.photoURL || defaultAvatar}" class="avatar">
                             <div class="user-info">
                                 <span class="user-name">${userFullName || user.displayName}</span>
                                 <span class="user-role ${userRole === 'developer' ? 'developer' : (userIsModerator ? 'moderator' : (userRole === 'teacher' ? 'teacher' : 'student'))}">
