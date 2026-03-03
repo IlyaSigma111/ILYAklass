@@ -313,13 +313,8 @@
         document.body.className = savedTheme + '-theme';
         document.getElementById('themeToggle').textContent = savedTheme === 'dark' ? '☀️ Светлая' : '🌙 Темная';
 
-        // Остальной код auth и загрузки профиля
-        let currentUser = null;
-        let userRole = null;
-        let userFullName = null;
-        let userIsModerator = false;
-        let teacherSubjects = [];
-        let profileSubjects = [];
+        // Убираем дублирующиеся объявления - используем глобальные переменные из firebase.js
+        // и не объявляем их заново
         
         const DEVELOPER_EMAIL = 'ilyagulkov25@gmail.com';
         const defaultSubjects = [
@@ -350,6 +345,7 @@
         
         auth.onAuthStateChanged(async (user) => {
             if (user) {
+                // Используем глобальные переменные из firebase.js
                 currentUser = user;
                 
                 try {
