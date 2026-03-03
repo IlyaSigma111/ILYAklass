@@ -9,121 +9,54 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
-        /* ЖЕСТКИЕ СТИЛИ ПРЯМО В ФАЙЛЕ */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-        }
-
+        /* СТИЛИ ДЛЯ ПРОФИЛЯ */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
         body {
-            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%) !important;
-            color: white !important;
+            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
             min-height: 100vh;
-            position: relative;
         }
-
         body.light-theme {
-            background: linear-gradient(145deg, #667eea 0%, #764ba2 100%) !important;
-            color: #1a1a2e !important;
+            background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
+            color: #1a1a2e;
         }
-
         .header {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255,255,255,0.1);
             backdrop-filter: blur(16px);
-            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+            border-bottom: 1px solid rgba(255,215,0,0.3);
             padding: 12px 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 15px;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
         }
-
-        .logo {
-            font-size: 32px;
-            font-weight: 900;
-            cursor: pointer;
-        }
-
-        .logo-il {
-            color: #ffd700;
-        }
-
-        .logo-yaclass {
-            color: #00ffff;
-        }
-
-        .nav-menu {
-            display: flex;
-            gap: 10px;
-        }
-
+        .logo { font-size: 32px; font-weight: 900; cursor: pointer; }
+        .logo-il { color: #ffd700; }
+        .logo-yaclass { color: #00ffff; }
+        .nav-menu { display: flex; gap: 10px; }
         .nav-link {
             padding: 8px 20px;
             border-radius: 40px;
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255,255,255,0.15);
             color: white;
             text-decoration: none;
-            font-weight: 600;
         }
-
-        .nav-link.active {
-            background: rgba(255, 215, 0, 0.3);
-        }
-
-        .user-card {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            background: rgba(255, 255, 255, 0.15);
-            padding: 5px 15px 5px 5px;
-            border-radius: 50px;
-        }
-
-        .avatar {
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            border: 2px solid #ffd700;
-            object-fit: cover;
-        }
-
-        .logout-btn, .theme-btn {
-            padding: 8px 20px;
-            border-radius: 40px;
-            background: rgba(255, 255, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            cursor: pointer;
-        }
-
-        .main-container {
-            max-width: 1400px;
-            margin: 25px auto;
-            padding: 0 20px;
-        }
-
+        .nav-link.active { background: rgba(255,215,0,0.3); }
+        .main-container { max-width: 1400px; margin: 25px auto; padding: 0 20px; }
+        
         .profile-container {
             display: grid;
             grid-template-columns: 300px 1fr;
             gap: 25px;
             margin-top: 20px;
         }
-
         .profile-sidebar, .profile-main {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255,255,255,0.1);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 215, 0, 0.3);
+            border: 1px solid rgba(255,215,0,0.3);
             border-radius: 30px;
             padding: 30px;
-            color: white;
         }
-
         .profile-avatar {
             width: 120px;
             height: 120px;
@@ -132,137 +65,39 @@
             margin-bottom: 20px;
             object-fit: cover;
         }
-
-        .profile-name {
-            font-size: 22px;
-            color: #ffd700;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .profile-email {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
-
-        .profile-role {
-            display: inline-block;
-            padding: 8px 25px;
-            border-radius: 30px;
-            font-weight: 600;
-            font-size: 16px;
-            margin-bottom: 20px;
-        }
-
-        .profile-role.developer {
-            background: rgba(255, 68, 68, 0.2);
-            border: 1px solid #ff4444;
-            color: #ff4444;
-        }
-
-        .profile-role.moderator {
-            background: rgba(0, 255, 255, 0.2);
-            border: 1px solid #00ffff;
-            color: #00ffff;
-        }
-
-        .profile-role.teacher {
-            background: rgba(255, 215, 0, 0.2);
-            border: 1px solid #ffd700;
-            color: #ffd700;
-        }
-
-        .profile-role.student {
-            background: rgba(76, 175, 80, 0.2);
-            border: 1px solid #4CAF50;
-            color: #4CAF50;
-        }
-
-        .settings-title {
-            color: #ffd700;
-            font-size: 20px;
-            margin-bottom: 20px;
-            font-weight: 600;
-        }
-
+        .profile-name { font-size: 22px; color: #ffd700; font-weight: 700; margin-bottom: 8px; }
+        .profile-email { color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 20px; }
+        .settings-title { color: #ffd700; font-size: 20px; margin-bottom: 20px; }
         .setting-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 12px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
             flex-wrap: wrap;
-            gap: 10px;
         }
-
-        .setting-label {
-            font-weight: 600;
-            color: white;
-            font-size: 15px;
-        }
-
-        .setting-description {
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 12px;
-        }
-
+        .setting-label { font-weight: 600; color: white; }
         .setting-input {
             padding: 10px 15px;
             border-radius: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255,215,0,0.3);
+            background: rgba(0,0,0,0.2);
             color: white;
             width: 250px;
         }
-
-        .subject-checkbox {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 25px;
-            cursor: pointer;
-        }
-
-        .add-quiz-btn {
-            background: rgba(255, 215, 0, 0.2);
-            border: 1px solid #ffd700;
-            color: #ffd700;
-            padding: 12px 25px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
         .submit-quiz {
             background: linear-gradient(135deg, #ffd700, #ffaa00);
             color: #1a1a2e;
             border: none;
-            padding: 15px;
-            border-radius: 40px;
+            padding: 12px;
+            border-radius: 30px;
             font-weight: 700;
             cursor: pointer;
             width: 100%;
         }
-
-        .loading {
-            text-align: center;
-            padding: 60px;
-            color: white;
-            font-size: 18px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 30px;
-        }
-
         @media (max-width: 768px) {
-            .profile-container {
-                grid-template-columns: 1fr;
-            }
-            .setting-input {
-                width: 100%;
-            }
+            .profile-container { grid-template-columns: 1fr; }
+            .setting-input { width: 100%; }
         }
     </style>
 </head>
@@ -292,11 +127,9 @@
     <script src="firebase.js"></script>
     <script src="auth.js"></script>
     <script>
-        // Функция переключения темы
         function toggleTheme() {
             const body = document.body;
             const themeBtn = document.getElementById('themeToggle');
-            
             if (body.classList.contains('dark-theme')) {
                 body.classList.remove('dark-theme');
                 body.classList.add('light-theme');
@@ -310,136 +143,52 @@
             }
         }
 
-        // Принудительно устанавливаем тему при загрузке
         const savedTheme = localStorage.getItem('theme') || 'dark';
         document.body.className = savedTheme + '-theme';
         document.getElementById('themeToggle').textContent = savedTheme === 'dark' ? '☀️ Светлая' : '🌙 Темная';
 
-        // Локальная заглушка для аватара (без Gravatar)
-        const defaultAvatar = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\' viewBox=\'0 0 100 100\'%3E%3Ccircle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%23333\' stroke=\'%23ffd700\' stroke-width=\'2\'/%3E%3Ctext x=\'50\' y=\'67\' font-size=\'40\' text-anchor=\'middle\' fill=\'%23ffd700\' font-family=\'Arial\'%3E👤%3C/text%3E%3C/svg%3E';
-
+        // Используем DEFAULT_AVATAR из firebase.js
         const DEVELOPER_EMAIL = 'ilyagulkov25@gmail.com';
+        let profileSubjects = [];
         const defaultSubjects = [
             'Русский язык', 'Алгебра', 'Геометрия', 'Математика', 
             'Химия', 'Физика', 'Литература', 'Английский язык', 
             'История', 'Физкультура'
         ];
-        
-        function cleanDisplayName(name) {
-            if (!name) return name;
-            return name.replace(/\s*\(\d+\)$/, '');
-        }
-        
-        async function loadProfileSubjects() {
-            try {
-                const subjectsSnap = await db.ref('subjects').once('value');
-                const subjects = subjectsSnap.val();
-                if (subjects) {
-                    profileSubjects = Object.values(subjects);
-                } else {
-                    profileSubjects = [...defaultSubjects];
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки предметов:', error);
-                profileSubjects = [...defaultSubjects];
-            }
-        }
-        
+
         auth.onAuthStateChanged(async (user) => {
             if (user) {
-                // Используем глобальные переменные из firebase.js
                 currentUser = user;
+                const simpleUser = getCurrentSimpleUser();
                 
-                try {
-                    await loadProfileSubjects();
+                if (simpleUser) {
+                    userRole = simpleUser.role;
+                    userFullName = simpleUser.fullName || simpleUser.username;
+                    userIsModerator = simpleUser.isModerator || false;
                     
-                    const simpleUser = getCurrentSimpleUser();
-                    
-                    if (simpleUser) {
-                        userRole = simpleUser.role;
-                        userFullName = simpleUser.fullName || simpleUser.username;
-                        userIsModerator = simpleUser.isModerator || false;
-                        
-                        const isDeveloper = userRole === 'developer';
-                        
-                        let roleText = '';
-                        let roleClass = '';
-                        
-                        if (isDeveloper) {
-                            roleText = '👑 Разработчик';
-                            roleClass = 'developer';
-                        } else if (userIsModerator) {
-                            roleText = '🛡️ Модератор';
-                            roleClass = 'moderator';
-                        } else {
-                            roleText = userRole === 'teacher' ? '👨‍🏫 Учитель' : '👨‍🎓 Ученик';
-                            roleClass = userRole === 'teacher' ? 'teacher' : 'student';
-                        }
-                        
-                        document.getElementById('userSection').innerHTML = `
-                            <div class="user-card">
-                                <img src="${defaultAvatar}" class="avatar">
-                                <div class="user-info">
-                                    <span class="user-name">${cleanDisplayName(userFullName)}</span>
-                                    <span class="user-role ${roleClass}">${roleText}</span>
-                                </div>
-                                <button onclick="signOut()" class="logout-btn">Выйти</button>
-                            </div>
-                        `;
-                        
-                        if (userRole === 'teacher' && simpleUser.subjects) {
-                            teacherSubjects = simpleUser.subjects;
-                        }
-                        
-                        loadProfileContent(simpleUser);
-                    } else {
-                        const userRef = db.ref('users/' + user.uid);
-                        const snapshot = await userRef.once('value');
-                        const userData = snapshot.val();
-                        
-                        if (userData) {
-                            userRole = userData.role;
-                            userFullName = userData.fullName || user.displayName;
-                            userIsModerator = userData.isModerator || false;
-                            
-                            const isDeveloper = user.email === DEVELOPER_EMAIL;
-                            
-                            let roleText = '';
-                            let roleClass = '';
-                            
-                            if (isDeveloper) {
-                                roleText = '👑 Разработчик';
-                                roleClass = 'developer';
-                            } else if (userIsModerator) {
-                                roleText = '🛡️ Модератор';
-                                roleClass = 'moderator';
-                            } else {
-                                roleText = userRole === 'teacher' ? '👨‍🏫 Учитель' : '👨‍🎓 Ученик';
-                                roleClass = userRole === 'teacher' ? 'teacher' : 'student';
-                            }
-                            
-                            document.getElementById('userSection').innerHTML = `
-                                <div class="user-card">
-                                    <img src="${user.photoURL || defaultAvatar}" class="avatar">
-                                    <div class="user-info">
-                                        <span class="user-name">${cleanDisplayName(userFullName)}</span>
-                                        <span class="user-role ${roleClass}">${roleText}</span>
-                                    </div>
-                                    <button onclick="signOut()" class="logout-btn">Выйти</button>
-                                </div>
-                            `;
-                            
-                            if (userRole === 'teacher' && userData.subjects) {
-                                teacherSubjects = userData.subjects;
-                            }
-                            
-                            loadProfileContent(user, userData);
-                        } else {
-                            window.location.href = 'index.html';
-                        }
+                    document.getElementById('userSection').innerHTML = `
+                        <div class="user-card">
+                            <img src="${DEFAULT_AVATAR}" class="avatar">
+                            <span>${userFullName}</span>
+                            <button onclick="signOut()" class="logout-btn">Выйти</button>
+                        </div>
+                    `;
+                    loadProfileContent(simpleUser);
+                } else {
+                    const userData = (await db.ref('users/' + user.uid).once('value')).val();
+                    if (userData) {
+                        userRole = userData.role;
+                        userFullName = userData.fullName || user.displayName;
+                        userIsModerator = userData.isModerator || false;
                     }
-                } catch (error) {
-                    console.error('Ошибка:', error);
+                    document.getElementById('userSection').innerHTML = `
+                        <div class="user-card">
+                            <img src="${user.photoURL || DEFAULT_AVATAR}" class="avatar">
+                            <span>${userFullName || user.displayName}</span>
+                            <button onclick="signOut()" class="logout-btn">Выйти</button>
+                        </div>
+                    `;
+                    loadProfileContent(user);
                 }
             } else {
                 window.location.href = 'index.html';
@@ -454,243 +203,41 @@
             }
             window.location.href = 'index.html';
         }
-        
-        function loadProfileContent(user, userData = null) {
-            const content = document.getElementById('content');
-            
-            const isDeveloper = userRole === 'developer';
-            
-            let roleText = '';
-            let roleClass = '';
-            
-            if (isDeveloper) {
-                roleText = '👑 Разработчик';
-                roleClass = 'developer';
-            } else if (userIsModerator) {
-                roleText = '🛡️ Модератор';
-                roleClass = 'moderator';
-            } else {
-                roleText = userRole === 'teacher' ? '👨‍🏫 Учитель' : '👨‍🎓 Ученик';
-                roleClass = userRole === 'teacher' ? 'teacher' : 'student';
-            }
-            
-            const showAllSubjects = localStorage.getItem('showAllSubjects') === 'true';
-            const avatar = user.photoURL || defaultAvatar;
-            
-            content.innerHTML = `
+
+        function loadProfileContent(user) {
+            document.getElementById('content').innerHTML = `
                 <div class="profile-container">
                     <div class="profile-sidebar">
-                        <img src="${avatar}" class="profile-avatar">
-                        <div class="profile-name">${cleanDisplayName(userFullName)}</div>
+                        <img src="${user.photoURL || DEFAULT_AVATAR}" class="profile-avatar">
+                        <div class="profile-name">${userFullName}</div>
                         <div class="profile-email">${user.email || 'local@user'}</div>
-                        <div class="profile-role ${roleClass}">${roleText}</div>
-                        
-                        ${userRole === 'teacher' || isDeveloper || userIsModerator ? `
-                            <div style="margin-top: 30px;">
-                                <h3 style="color: #ffd700; margin-bottom: 15px;">➕ Управление</h3>
-                                <button class="add-quiz-btn" onclick="window.location.href='index.html#addQuiz'" style="width: 100%;">➕ Добавить викторину</button>
-                            </div>
-                        ` : ''}
                     </div>
-                    
                     <div class="profile-main">
-                        <h2 class="settings-title">⚙️ Настройки профиля</h2>
-                        
-                        <div class="settings-section">
-                            <div class="setting-item">
-                                <div>
-                                    <div class="setting-label">Фамилия и Имя</div>
-                                    <div class="setting-description">Как вас видят другие пользователи</div>
-                                </div>
-                                <input type="text" id="fullNameInput" class="setting-input" value="${cleanDisplayName(userFullName)}" placeholder="Иванов Иван">
-                            </div>
-                            
-                            <button class="submit-quiz" onclick="saveFullName()" style="margin-top: 20px;">💾 Сохранить имя</button>
+                        <h2 class="settings-title">⚙️ Настройки</h2>
+                        <div class="setting-item">
+                            <span class="setting-label">Имя:</span>
+                            <input type="text" id="fullNameInput" class="setting-input" value="${userFullName}">
                         </div>
-                        
-                        <div class="settings-section">
-                            <div class="setting-item">
-                                <div>
-                                    <div class="setting-label">Режим "Все предметы"</div>
-                                    <div class="setting-description">Показывать все предметы на главной</div>
-                                </div>
-                                <label class="subject-checkbox">
-                                    <input type="checkbox" id="showAllSubjects" ${showAllSubjects ? 'checked' : ''} onchange="toggleAllSubjects()">
-                                    Включить
-                                </label>
-                            </div>
-                        </div>
-                        
-                        ${userRole === 'teacher' ? `
-                            <div class="settings-section">
-                                <h3 style="color: #ffd700; margin-bottom: 20px;">📚 Мои предметы</h3>
-                                <div id="subjectsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;"></div>
-                                
-                                <div style="display: flex; gap: 15px; margin-bottom: 30px;">
-                                    <input type="text" id="newSubjectInput" placeholder="Новый предмет" class="setting-input" style="flex: 1;">
-                                    <button onclick="addNewSubject()" class="add-quiz-btn">➕ Добавить</button>
-                                </div>
-                                
-                                <button class="submit-quiz" onclick="saveTeacherSubjects()">💾 Сохранить предметы</button>
-                            </div>
-                        ` : ''}
-                        
-                        ${userRole === 'student' ? `
-                            <div class="settings-section">
-                                <h3 style="color: #ffd700; margin-bottom: 20px;">📊 Моя статистика</h3>
-                                <div class="setting-item">
-                                    <div class="setting-label">Всего викторин пройдено</div>
-                                    <div class="setting-value" id="totalQuizzes">0</div>
-                                </div>
-                                <div class="setting-item">
-                                    <div class="setting-label">Сумма баллов</div>
-                                    <div class="setting-value" id="totalScore">0</div>
-                                </div>
-                                <div class="setting-item">
-                                    <div class="setting-label">Средний балл</div>
-                                    <div class="setting-value" id="avgScore">0</div>
-                                </div>
-                            </div>
-                        ` : ''}
+                        <button class="submit-quiz" onclick="saveFullName()">Сохранить</button>
                     </div>
                 </div>
             `;
-            
-            if (userRole === 'teacher') {
-                renderSubjectCheckboxes();
-            }
-            
-            if (userRole === 'student') {
-                loadStudentStats();
-            }
         }
-        
-        async function loadStudentStats() {
-            try {
-                const resultsSnap = await db.ref('results').orderByChild('studentId').equalTo(currentUser.uid).once('value');
-                const results = resultsSnap.val() || {};
-                
-                let total = 0;
-                let count = 0;
-                
-                Object.values(results).forEach(r => {
-                    total += r.score || 0;
-                    count++;
-                });
-                
-                const totalEl = document.getElementById('totalQuizzes');
-                const scoreEl = document.getElementById('totalScore');
-                const avgEl = document.getElementById('avgScore');
-                
-                if (totalEl) totalEl.textContent = count;
-                if (scoreEl) scoreEl.textContent = total;
-                if (avgEl) avgEl.textContent = count > 0 ? (total / count).toFixed(1) : 0;
-            } catch (error) {
-                console.error('Ошибка загрузки статистики:', error);
-            }
-        }
-        
-        function renderSubjectCheckboxes() {
-            const container = document.getElementById('subjectsList');
-            if (!container) return;
-            
-            let html = '';
-            profileSubjects.forEach(subject => {
-                html += `
-                    <label class="subject-checkbox">
-                        <input type="checkbox" value="${subject}" ${teacherSubjects.includes(subject) ? 'checked' : ''}>
-                        ${subject}
-                    </label>
-                `;
-            });
-            container.innerHTML = html;
-        }
-        
-        async function addNewSubject() {
-            const newSubject = document.getElementById('newSubjectInput').value.trim();
-            if (!newSubject) {
-                alert('Введите название предмета');
-                return;
-            }
-            
-            const formattedSubject = newSubject.charAt(0).toUpperCase() + newSubject.slice(1);
-            
-            if (profileSubjects.includes(formattedSubject)) {
-                alert('Такой предмет уже существует');
-                return;
-            }
-            
-            try {
-                await db.ref('subjects').push(formattedSubject);
-                profileSubjects.push(formattedSubject);
-                renderSubjectCheckboxes();
-                document.getElementById('newSubjectInput').value = '';
-                alert('Предмет добавлен!');
-            } catch (error) {
-                console.error('Ошибка добавления предмета:', error);
-                alert('Ошибка при добавлении предмета');
-            }
-        }
-        
+
         async function saveFullName() {
             const newName = document.getElementById('fullNameInput').value;
-            if (!newName) {
-                alert('Введите имя');
-                return;
-            }
+            if (!newName) return alert('Введите имя');
             
-            try {
-                const simpleUser = getCurrentSimpleUser();
-                if (simpleUser) {
-                    await db.ref('simple_users/' + simpleUser.id).update({
-                        fullName: newName,
-                        username: newName
-                    });
-                    
-                    simpleUser.fullName = newName;
-                    simpleUser.username = newName;
-                    localStorage.setItem('currentSimpleUser', JSON.stringify(simpleUser));
-                } else {
-                    await db.ref('users/' + currentUser.uid).update({
-                        fullName: newName
-                    });
-                }
-                
-                alert('Имя сохранено!');
-                window.location.reload();
-            } catch (error) {
-                console.error('Ошибка сохранения имени:', error);
-                alert('Ошибка при сохранении имени');
+            const simpleUser = getCurrentSimpleUser();
+            if (simpleUser) {
+                await db.ref('simple_users/' + simpleUser.id).update({ fullName: newName });
+                simpleUser.fullName = newName;
+                localStorage.setItem('currentSimpleUser', JSON.stringify(simpleUser));
+            } else {
+                await db.ref('users/' + currentUser.uid).update({ fullName: newName });
             }
-        }
-        
-        async function saveTeacherSubjects() {
-            const checkboxes = document.querySelectorAll('#subjectsList input[type="checkbox"]:checked');
-            const subjects = Array.from(checkboxes).map(cb => cb.value);
-            
-            try {
-                const simpleUser = getCurrentSimpleUser();
-                if (simpleUser) {
-                    await db.ref('simple_users/' + simpleUser.id).update({
-                        subjects: subjects
-                    });
-                } else {
-                    await db.ref('users/' + currentUser.uid).update({
-                        subjects: subjects
-                    });
-                }
-                
-                alert('Предметы сохранены!');
-            } catch (error) {
-                console.error('Ошибка сохранения предметов:', error);
-                alert('Ошибка при сохранении предметов');
-            }
-        }
-        
-        function toggleAllSubjects() {
-            const checked = document.getElementById('showAllSubjects').checked;
-            localStorage.setItem('showAllSubjects', checked);
-            alert('Настройка сохранена');
+            alert('Имя сохранено!');
+            window.location.reload();
         }
     </script>
 </body>
